@@ -7,6 +7,8 @@ import scipy.optimize as opt
 from scipy.integrate import solve_ivp
 import astropy.constants as cte
 from scipy.special import erfinv
+import matplotlib.pyplot as plt 
+
 ###################################################################################
 #------------------------------- Constant table ----------------------------------#
 ###################################################################################
@@ -142,7 +144,7 @@ def F_acc(Xd,Chi,M_p,Mdot,Rc,r):
     """
     independent of temperature
     """
-    return (Xd * Chi*cte.G.value * M_p * Mdot)/(4 * np.pi * Rc * Rc * r)
+    return ((Xd * Chi * cte.G.value * M_p * Mdot)/(4 * np.pi * Rc * Rc * r)) * np.exp(-r**2/Rc**2)
 
 def F_planet(L_p, R_p , zs, r):
     
@@ -163,7 +165,7 @@ def mean_planck_opacity(temp_surf,Chi) :
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
 
-      temp_surf = ( ((1 + (2*kappa_p*sigmag)**(-1) )/cte.sigma_sb.value) * (F_acc + F_vis + ks*F_p) + temp_neb**4 )**0.25 
+      temp_surf = ( ((1 + 1/(2*kappa_p*sigmag) )/cte.sigma_sb.value) * (F_acc + F_vis + ks*F_p) + temp_neb**4 )**0.25 
 
       return temp_surf
 
@@ -175,7 +177,7 @@ def surface_mass_coordinate(kappa_p,sigmag) :
     return 1 - 4 / (3 * kappa_p * sigmag)
 
 
-def midplane_temp_residue(mid_temp_guess,temp_surf,gamma,Chi,kappa0,beta,mug,alpha,qs,cap_lambda) :
+def midplane_temp_residue(mid_temp_guess,temp_surf,gamma,Chi,kappa0,beta,mug,alpha,qs,cap_lambda,omegak,L) :
 
     return mid_temp_guess**(5-beta) - temp_surf**(4-beta)*mid_temp_guess - 3/(512*np.pi**2) * mug/(cte.sigma_sb.value * 8.314 * gamma) * (4-beta) * Chi * kappa0 * Mdot**2/alpha * omegak**3 * (cap_lambda/L)**2 * qs**2
 
@@ -187,10 +189,10 @@ def Residue(X,dict_cte,N) :
     algorithm as a single array [mid_temp,temp_surf].  
     """
     # Disk properties depending on temperature
-    cs = sound_speed(dict_cte['gamma'],X[0:N-1],dict_cte["mu_gas"])
-    mu = viscosity(cs,dict_cte['alpha'],dict_cte["omageak"])
+    cs = sound_speed(dict_cte['gamma'],X[0:N],dict_cte["mu_gas"])
+    mu = viscosity(cs,dict_cte['alpha'],dict_cte["omegak"])
     sigmag = surface_density(dict_cte['Mdot'],mu,dict_cte['cap_lambda'],dict_cte['L'])
-    h = gas_scale_height(cs,X[0:N-1],dict_cte['omegak'])
+    h = gas_scale_height(cs,X[0:N],dict_cte['omegak'])
 
     #Surface properties depending on surface temperature
     kappa0,beta,kappa_p = mean_planck_opacity(X[N:],dict_cte['Chi'])
@@ -200,7 +202,7 @@ def Residue(X,dict_cte,N) :
     F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs,dict_cte['r'])
 
     #Compute of surface temp and resulting residue
-    temp_surface= surface_temperature(X[N:],sigmag,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],dict_cte['Chi'])
+    temp_surface= surface_temperature(sigmag,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],kappa_p)
 
     res_temp_surf = temp_surface - X[N:]
 
@@ -208,7 +210,7 @@ def Residue(X,dict_cte,N) :
 
     qs = surface_mass_coordinate(kappa_p,sigmag)
 
-    res_mid_temp = midplane_temp_residue(X[0:N-1],temp_surface,dict_cte["gamma"],dict_cte["Chi"],kappa0,beta,dict_cte["mu_gas"],dict_cte['alpha'],qs,dict_cte["cap_lambda"])
+    res_mid_temp = midplane_temp_residue(X[0:N],temp_surface,dict_cte["gamma"],dict_cte["Chi"],kappa0,beta,dict_cte["mu_gas"],dict_cte['alpha'],qs,dict_cte["cap_lambda"],dict_cte['omegak'],dict_cte["L"])
 
     return np.concatenate((res_mid_temp,res_temp_surf))
 
@@ -245,3 +247,19 @@ dict_cte['r'] = np.logspace(np.log10(2*R_p),np.log10(R_disk),Nr) # computational
 dict_cte['cap_lambda'] = cap_lambda(dict_cte['r'],R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
 
 dict_cte['omegak'] = np.sqrt(cte.G.value * M_p / dict_cte['r']**3) # keplerian pulsasion
+
+#----------------energy flux independant of temperature------------------------------------#
+
+# Viscosity energy flux to disk surface 
+dict_cte['F_vis'] = F_vis(dict_cte['cap_lambda'],dict_cte['Mdot'],dict_cte['omegak'],dict_cte['L'])
+
+#Accretion energy flux to the surface
+dict_cte['F_acc'] = F_acc(Xd,Chi,M_p,Mdot,R_c,dict_cte['r'])
+
+
+X0 = np.ones(2*Nr)*500
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr))
+
+plt.plot(dict_cte['r',sol.x[0:Nr-1]])
+plt.xscale('log')
+plt.show()
