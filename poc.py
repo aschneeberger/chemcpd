@@ -215,7 +215,7 @@ def Residue(X,dict_cte,N) :
 #---------Contant values construction and optimization of temperatures----------------#
 #######################################################################################
 
-#-----------------=Construction of the constant value wqith temperature dictionary---------#
+#-----------------Construction of the constant value wqith temperature dictionary---------#
 
 dict_cte['L'] = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient 
 
