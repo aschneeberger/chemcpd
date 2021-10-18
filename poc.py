@@ -44,9 +44,9 @@ R_p = R_p_high
 
 # disk parameters 
 
-R_H = R_p * M_p / (3* cte.M_sun.value)   # Hill radius from makalkin et al 2014 
+R_H = R_p * M_p / (3* cte.M_sun.value)   # Hill radius from makalkin et al 2014 [m]
 
-R_disk = R_H / 5                           # Disk radius from Mordasini et al 2013 
+R_disk = R_H / 5                           # Disk radius from Mordasini et al 2013 [m]
 
 
 # -------------- Temperature and radius independent quantities -----------------------------------# 
@@ -68,9 +68,34 @@ def sepecific_angular_momentum(M_p,a_p = 5) :
     else :
         return 9.0e11 * (M_p/M_jup)**(2/3) * a_p **(7/4)
 
+def cap_lambda (r,Rc,Rp,R_disk) :
+    """
+    Compute the Value capital lambda from makalkin et al 2014 eq 2 and 3
 
-L = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient
-J = sepecific_angular_momentum(M_p)
-Rc = J^2 / (cte.G * M_p) # Centr
+    inputs:
+    r : 1D array, computational grid [m]
+    Rc : Centrifugal radius [m]
+    Rp : planet radius [mp]
 
-r = np.logspace(R_disk,Rc,Nr)
+    return :
+    lambda : Capital lambda factor, angular momentum factor  
+    """
+
+    cap_lambda = np.zeros(r.shape)
+    
+    # At r<rc, the angular momentum of gas infall from the psn is taken into acount
+    cap_lambda[r<Rc] = 1 - 1/5 * (r[r<Rc]/Rc)**2 - np.sqrt(Rp/r[r<Rc]) - 4/5 * np.sqrt(Rc/R_disk) + 4/5 * (Rp*Rc)/(R_disk * r[r<Rc]) + 0.2 * np.sqrt(Rp/R_disk) * (r[r<Rc]/Rc)**2 
+
+    #At r>=rc, the angular momentum of gas infall is not considered since at those radii gas is ejected from the cpd and there is no infalls
+    cap_lambda[r>=Rc] = 0.8 * np.sqrt(Rc/r[r>=Rc]) - Rp/r[r>=Rc] - 0.8*Rc/R_disk + np.sqrt(Rp/R_disk) 
+
+    return cap_lambda     
+
+
+L = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient 
+J = sepecific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
+R_c = J^2 / (cte.G * M_p) # Centrifuge radius [m] 
+
+r = np.logspace(R_disk,R_c,Nr) # computational log grid, non linear
+
+lmbd = cap_lambda(r,R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
