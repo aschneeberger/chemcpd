@@ -21,7 +21,10 @@ sigma_sb = cte.sigma_sb
 Xd = 0.0142 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
 Chi = 1 # Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). Can be btw 1 and 1.5 (Ruskol 2006)
 mu_gas = 2.34 # mean molecular weight 
-Ks = 0.2 # CDP radiation absorption factor 
+Ks = 0.5 # CDP radiation absorption factor 
+alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
+gamma = 1.42 # addiabatic compression facteor of Perfect Gas
+temp_neb = 100 # PSN temperature at 5 AU [K]
 
 Nr = 2000 # Number of points in the grid 
 
@@ -197,7 +200,7 @@ def Residue(X,dict_cte,N) :
     F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs,dict_cte['r'])
 
     #Compute of surface temp and resulting residue
-    temp_surface= surface_temperature(X[N:],sigmag,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['ks'],dict_cte['temp_neb'],dict_cte['Chi'])
+    temp_surface= surface_temperature(X[N:],sigmag,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],dict_cte['Chi'])
 
     res_temp_surf = temp_surface - X[N:]
 
@@ -215,9 +218,24 @@ def Residue(X,dict_cte,N) :
 #---------Contant values construction and optimization of temperatures----------------#
 #######################################################################################
 
-#-----------------Construction of the constant value wqith temperature dictionary---------#
+# ------------------Constants from the constant table------------------------------------#
+
+dict_cte['Ks'] = Ks # rayonement absorption factor of cpd 
+dict_cte["Chi"] = Chi 
+dict_cte["mu_gas"] = mu_gas
+dict_cte["alpha"] = alpha
+dict_cte["gamma"] = gamma
+dict_cte["temp_neb"] = temp_neb
+dict_cte["L_p"] = L_p
+dict_cte["R_p"] = R_p
+dict_cte["Mdot"] = Mdot
+
+
+
+#-----------------Construction of the constant value with temperature dictionary---------#
 
 dict_cte['L'] = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient 
+
 
 J = specific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
 R_c = J**2 / (cte.G.value * M_p) # Centrifuge radius [m] 
