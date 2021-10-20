@@ -2,12 +2,16 @@
 proof of concept script for the makalkin stationary model of cpd on (r,z)  
 """
 
+from math import inf
 import numpy as np 
 import scipy.optimize as opt 
 from scipy.integrate import solve_ivp
 import astropy.constants as cte
+from scipy.optimize._lsq.least_squares import soft_l1
 from scipy.special import erfinv
 import matplotlib.pyplot as plt 
+import scipy as sc
+from autograd import grad 
 
 ###################################################################################
 #------------------------------- Constant table ----------------------------------#
@@ -22,13 +26,13 @@ year = 365*24*3600          # year in seconds
 sigma_sb = cte.sigma_sb
 Xd = 0.0142 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
 Chi = 1 # Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). Can be btw 1 and 1.5 (Ruskol 2006)
-mu_gas = 2.34 # mean molecular weight 
+mu_gas = 2.341e-3 # mean molecular weight 
 Ks = 0.5 # CDP radiation absorption factor 
 alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 2000 # Number of points in the grid 
+Nr = 1000 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
@@ -37,8 +41,8 @@ M_p_high = 300 * M_earth    # Later jupiter mass after gas accretion runaway
 
 M_p = M_p_high  
 
-L_p_pic_accretion = 2e-3 * L_sun    # Jupiter luminosity at pic accretion runaway 
-L_p_high = 1e-3 * L_sun     # later Jupiter luminosity after accreion runaway, at t=1Myr 
+L_p_pic_accretion = 1e-3 * L_sun    # Jupiter luminosity at pic accretion runaway 
+L_p_high = 1e-4 * L_sun     # later Jupiter luminosity after accreion runaway, at t=1Myr 
 
 L_p = L_p_high 
 
@@ -120,13 +124,44 @@ We initialize it with a guess for the midplane temperature profile Tm0.
 #--------------------- Surface density ---------------------------------------------------------#
 
 def sound_speed(gamma,mid_temp,mug):
-    return np.sqrt(gamma * 8.314 * mid_temp / mug)
+    """
+    Compute the sound speed in the disk midplane 
+
+    inputs:
+    gamma: coefficient de chaleur spécifique [no units]
+    mid_temp: midplane temperature  [K]
+    mug: mean molécular weight [Kg.mol-1]
+
+    output:
+    cs: sound speed [m.s-1]
+    """
+    return np.sqrt(gamma * 8.314 * mid_temp / mug )
 
 def viscosity(cs,alpha,omegak):
+    """
+    Dynamic viscosity of the gas
+
+    input:
+    alpha: alpha viscosity parameter from shakura and sunyaev 
+    cs: sound speed [m.s-1]
+    omegak: keplerian pulsation [s-1]
+
+    return:
+    mu: the dysnamic viscosity [m2.s-1]
+    """
     return alpha * cs*cs / omegak
 
 
 def gas_scale_height(cs,mid_temp,omgak):
+    """
+    Compute the gas gaussian hydrastatic scale height 
+
+    input:
+    cs: the sound speed [m.s-1]
+    omegak: keplerian pusation [s-1]
+
+
+    """
     return cs*mid_temp/omgak
 
 def surface_density(Mdot,mu,cap_lambda,L):
@@ -150,9 +185,15 @@ def F_planet(L_p, R_p , zs, r):
     
     eps = np.arctan(4/(3*np.pi) * R_p/np.sqrt(r*r + zs*zs))
 
-    eta = np.arctan(np.gradient(zs,r,edge_order=2)) - np.arctan(zs/r)
+    dzsdr = np.gradient(zs,r,edge_order=2)
+    #dzsdr[-1] = dzsdr[-2] # assume the same disk slope at the edge
 
-    return L_p * np.sin(eps * r + eta)/(8 * np.pi *(r*r + zs*zs))
+    eta = np.arctan(dzsdr) - np.arctan(zs/r)
+
+    F_p = L_p * np.sin(eps * r + eta)/(8 * np.pi *(r*r + zs*zs))
+    F_p[F_p<0.0] = 0.0
+
+    return F_p
 
 def z_surface(sigmag,kappa_P,h):
 
@@ -166,6 +207,7 @@ def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
 
       temp_surf = ( ((1 + 1/(2*kappa_p*sigmag) )/cte.sigma_sb.value) * (F_acc + F_vis + ks*F_p) + temp_neb**4 )**0.25 
+      temp_surf[temp_surf<0.0] = 0.0
 
       return temp_surf
 
@@ -242,7 +284,8 @@ dict_cte['L'] = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient
 J = specific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
 R_c = J**2 / (cte.G.value * M_p) # Centrifuge radius [m] 
 
-dict_cte['r'] = np.logspace(np.log10(2*R_p),np.log10(R_disk),Nr) # computational log grid, non linear
+# dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(100*cte.R_jup.value),Nr) # computational log grid, non linear
+dict_cte['r'] = np.linspace(1.2*R_p,100*cte.R_jup.value,Nr) # computational log grid, non linear
 
 dict_cte['cap_lambda'] = cap_lambda(dict_cte['r'],R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
 
@@ -256,10 +299,25 @@ dict_cte['F_vis'] = F_vis(dict_cte['cap_lambda'],dict_cte['Mdot'],dict_cte['omeg
 #Accretion energy flux to the surface
 dict_cte['F_acc'] = F_acc(Xd,Chi,M_p,Mdot,R_c,dict_cte['r'])
 
+#---------------Setting the initial guess from a prescription of Anderson et al 2021------#
+"""
+The solver need an initial guess close enougth to not diverge. since the tempertaure dependence come the gas surface density
+and the heating via planet luminosity. A simple prescription from anderson on an equilibrium between disk black body radiation 
+and viscous heating is a close enougth guess.
+"""
 
-X0 = np.ones(2*Nr)*500
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr))
+# From eq 4 in Anderson 2021
+mid_temp0 = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
 
-plt.plot(dict_cte['r',sol.x[0:Nr-1]])
+X0 = np.concatenate((mid_temp0/5,mid_temp0))
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',jac='2-point')
+
+print(sol)
+
+plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[0:Nr],label='midplane')
+plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[Nr:],label='surface')
+#plt.plot(dict_cte['r']/cte.R_jup.value,X0[Nr:],label='guess')
+plt.legend()
 plt.xscale('log')
+plt.yscale('log')
 plt.show()
