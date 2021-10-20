@@ -201,7 +201,7 @@ def z_surface(sigmag,kappa_P,h):
 
 def mean_planck_opacity(temp_surf,Chi) : 
     
-    return 0.1,0.5,Chi*0.1*temp_surf**0.5
+    return 0.1/10,0.5,Chi*0.1*temp_surf**0.5/10
 
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
