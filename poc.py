@@ -3,7 +3,8 @@ proof of concept script for the makalkin stationary model of cpd on (r,z)
 """
 
 from math import inf
-import numpy as np 
+import numpy as np
+from numpy.typing import _256Bit 
 import scipy.optimize as opt 
 from scipy.integrate import solve_ivp
 import astropy.constants as cte
@@ -26,7 +27,7 @@ year = 365*24*3600          # year in seconds
 sigma_sb = cte.sigma_sb
 Xd = 0.0142 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
 Chi = 1 # Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). Can be btw 1 and 1.5 (Ruskol 2006)
-mu_gas = 2.341e-3 # mean molecular weight 
+mu_gas = 2.341 # mean molecular weight 
 Ks = 0.5 # CDP radiation absorption factor 
 alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
@@ -44,10 +45,10 @@ M_p = M_p_high
 L_p_pic_accretion = 1e-3 * L_sun    # Jupiter luminosity at pic accretion runaway 
 L_p_high = 1e-4 * L_sun     # later Jupiter luminosity after accreion runaway, at t=1Myr 
 
-L_p = L_p_high 
+L_p =L_p_high 
 
 Mdot_pic_accretion = 1e-5 * M_earth/year #Accretion rate at accretion runaway  
-Mdot_high = 4e-6 * M_earth/year     # Later accretion rate after 1Myr
+Mdot_high = 1e-8 * M_jup/year #4e-6 * M_earth/year     # Later accretion rate after 1Myr
 
 Mdot = Mdot_high 
 
@@ -183,25 +184,28 @@ def F_acc(Xd,Chi,M_p,Mdot,Rc,r):
 
 def F_planet(L_p, R_p , zs, r):
     
-    eps = np.arctan(4/(3*np.pi) * R_p/np.sqrt(r*r + zs*zs))
+    eps = np.arctan((4/(3*np.pi) * R_p) / np.sqrt(r*r + zs*zs))
 
     dzsdr = np.gradient(zs,r,edge_order=2)
     #dzsdr[-1] = dzsdr[-2] # assume the same disk slope at the edge
 
     eta = np.arctan(dzsdr) - np.arctan(zs/r)
 
-    F_p = L_p * np.sin(eps * r + eta)/(8 * np.pi *(r*r + zs*zs))
+    F_p = L_p * np.sin(eps*r  + eta)/(8 * np.pi *(r*r + zs*zs))
     F_p[F_p<0.0] = 0.0
 
     return F_p
 
 def z_surface(sigmag,kappa_P,h):
 
-    return erfinv(1 -2/3 * 2/(sigmag * kappa_P)) * np.sqrt(2) * h
+    # value inside erfinv function must be between -1 and 1
+    # It imply that sigmag*kappa_p > 2/3
+    zs= erfinv(1 -2/3 * 2/(sigmag * kappa_P)) * np.sqrt(2) * h 
+    return  zs
 
 def mean_planck_opacity(temp_surf,Chi) : 
     
-    return 0.1/10,0.5,Chi*0.1*temp_surf**0.5/10
+    return 0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
 
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
@@ -230,31 +234,41 @@ def Residue(X,dict_cte,N) :
     Residue computation to determine bpth surface and midplane temperatures, inserted in the optimization
     algorithm as a single array [mid_temp,temp_surf].  
     """
+
+    #Values from previous iteration 
+    mid_temp_prev = X[:N]
+    temp_surf_prev = X[N:2*N]
+    sigmag_prev = X[2*N:3*N]
+    kappa_p_prev = X[3*N:4*N]
+    zs_prev = X[4*N:]
+
+    #Compute new values (5 eq with 5 unknowns)
+
     # Disk properties depending on temperature
-    cs = sound_speed(dict_cte['gamma'],X[0:N],dict_cte["mu_gas"])
+    cs = sound_speed(dict_cte['gamma'],mid_temp_prev,dict_cte["mu_gas"])
     mu = viscosity(cs,dict_cte['alpha'],dict_cte["omegak"])
     sigmag = surface_density(dict_cte['Mdot'],mu,dict_cte['cap_lambda'],dict_cte['L'])
-    h = gas_scale_height(cs,X[0:N],dict_cte['omegak'])
+    h = gas_scale_height(cs,mid_temp_prev,dict_cte['omegak'])
 
     #Surface properties depending on surface temperature
-    kappa0,beta,kappa_p = mean_planck_opacity(X[N:],dict_cte['Chi'])
-    zs = z_surface(sigmag,kappa_p,h)
+    kappa0,beta,kappa_p = mean_planck_opacity(temp_surf_prev,dict_cte['Chi'])
+    zs = z_surface(sigmag_prev,kappa_p_prev,h)
 
     #Heating from planet luminosity depends on surface géometry
-    F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs,dict_cte['r'])
+    F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs_prev,dict_cte['r'])
 
     #Compute of surface temp and resulting residue
-    temp_surface= surface_temperature(sigmag,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],kappa_p)
+    temp_surface= surface_temperature(sigmag_prev,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],kappa_p)
 
-    res_temp_surf = temp_surface - X[N:]
+    res_temp_surf = temp_surface - temp_surf_prev
 
     #Compute of midplane temperatureand residue 
 
-    qs = surface_mass_coordinate(kappa_p,sigmag)
+    qs = surface_mass_coordinate(kappa_p,sigmag_prev)
 
     res_mid_temp = midplane_temp_residue(X[0:N],temp_surface,dict_cte["gamma"],dict_cte["Chi"],kappa0,beta,dict_cte["mu_gas"],dict_cte['alpha'],qs,dict_cte["cap_lambda"],dict_cte['omegak'],dict_cte["L"])
 
-    return np.concatenate((res_mid_temp,res_temp_surf))
+    return np.concatenate((res_mid_temp,res_temp_surf,sigmag-sigmag_prev,kappa_p-kappa_p_prev,zs-zs_prev))
 
 
 
@@ -285,7 +299,7 @@ J = specific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
 R_c = J**2 / (cte.G.value * M_p) # Centrifuge radius [m] 
 
 # dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(100*cte.R_jup.value),Nr) # computational log grid, non linear
-dict_cte['r'] = np.linspace(1.2*R_p,100*cte.R_jup.value,Nr) # computational log grid, non linear
+dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(50*cte.R_jup.value),Nr) # computational log grid, non linear
 
 dict_cte['cap_lambda'] = cap_lambda(dict_cte['r'],R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
 
@@ -306,16 +320,29 @@ and the heating via planet luminosity. A simple prescription from anderson on an
 and viscous heating is a close enougth guess.
 """
 
-# From eq 4 in Anderson 2021
+# From eq 4 in Anderson 2021 guess of surface and mid plane temps 
 mid_temp0 = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
 
-X0 = np.concatenate((mid_temp0/5,mid_temp0))
+# guess for surface density 
+cs = sound_speed(dict_cte['gamma'],mid_temp0,dict_cte["mu_gas"])
+mu = viscosity(cs,dict_cte['alpha'],dict_cte["omegak"])
+sigmag0 = surface_density(dict_cte['Mdot'],mu,dict_cte['cap_lambda'],dict_cte['L'])
+
+# guess opacity 
+kappa0,beta,kappa_p0 = mean_planck_opacity(mid_temp0,dict_cte['Chi'])
+
+#Guess ofr photosphere surface altitude 
+h = gas_scale_height(cs,mid_temp0,dict_cte['omegak'])
+zs0 = z_surface(sigmag0,kappa_p0,h)
+
+
+X0 = np.concatenate((mid_temp0/5,mid_temp0,sigmag0,kappa_p0,zs0))
 sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',jac='2-point')
 
 print(sol)
 
-plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[0:Nr],label='midplane')
-plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[Nr:],label='surface')
+plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[:Nr],label='midplane')
+plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[Nr:2*Nr],label='surface')
 #plt.plot(dict_cte['r']/cte.R_jup.value,X0[Nr:],label='guess')
 plt.legend()
 plt.xscale('log')
