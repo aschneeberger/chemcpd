@@ -4,6 +4,7 @@ proof of concept script for the makalkin stationary model of cpd on (r,z)
 
 from math import inf
 import numpy as np
+from numpy.core.numeric import full
 from numpy.typing import _256Bit 
 import scipy.optimize as opt 
 from scipy.integrate import solve_ivp
@@ -25,10 +26,10 @@ M_jup = cte.M_jup.value
 L_sun = cte.L_sun.value
 year = 365*24*3600          # year in seconds
 sigma_sb = cte.sigma_sb
-Xd = 0.0142 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
+Xd = 0.006 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
 Chi = 1 # Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). Can be btw 1 and 1.5 (Ruskol 2006)
 mu_gas = 2.341 # mean molecular weight 
-Ks = 0.5 # CDP radiation absorption factor 
+Ks = 0.2 # CDP radiation absorption factor 
 alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
@@ -200,12 +201,12 @@ def z_surface(sigmag,kappa_P,h):
 
     # value inside erfinv function must be between -1 and 1
     # It imply that sigmag*kappa_p > 2/3
-    zs= erfinv(1 -2/3 * 2/(sigmag * kappa_P)) * np.sqrt(2) * h 
+    zs= erfinv(1 -  (4/(3*sigmag * kappa_P)) ) * np.sqrt(2) * h 
     return  zs
 
 def mean_planck_opacity(temp_surf,Chi) : 
     
-    return 0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
+    return 1e-2,0.0, 1e-2 * np.ones(temp_surf.shape) #0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
 
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
@@ -239,10 +240,9 @@ def Residue(X,dict_cte,N) :
     mid_temp_prev = X[:N]
     temp_surf_prev = X[N:2*N]
     sigmag_prev = X[2*N:3*N]
-    kappa_p_prev = X[3*N:4*N]
-    zs_prev = X[4*N:]
+    zs_prev = X[3*N:]
 
-    #Compute new values (5 eq with 5 unknowns)
+    #Compute new values (4 eq with 4 unknowns)
 
     # Disk properties depending on temperature
     cs = sound_speed(dict_cte['gamma'],mid_temp_prev,dict_cte["mu_gas"])
@@ -252,7 +252,7 @@ def Residue(X,dict_cte,N) :
 
     #Surface properties depending on surface temperature
     kappa0,beta,kappa_p = mean_planck_opacity(temp_surf_prev,dict_cte['Chi'])
-    zs = z_surface(sigmag_prev,kappa_p_prev,h)
+    zs = z_surface(sigmag_prev,kappa_p,h)
 
     #Heating from planet luminosity depends on surface géometry
     F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs_prev,dict_cte['r'])
@@ -268,7 +268,7 @@ def Residue(X,dict_cte,N) :
 
     res_mid_temp = midplane_temp_residue(X[0:N],temp_surface,dict_cte["gamma"],dict_cte["Chi"],kappa0,beta,dict_cte["mu_gas"],dict_cte['alpha'],qs,dict_cte["cap_lambda"],dict_cte['omegak'],dict_cte["L"])
 
-    return np.concatenate((res_mid_temp,res_temp_surf,sigmag-sigmag_prev,kappa_p-kappa_p_prev,zs-zs_prev))
+    return np.concatenate((res_mid_temp,res_temp_surf,(sigmag-sigmag_prev),(zs-zs_prev)))
 
 
 
@@ -324,7 +324,7 @@ and viscous heating is a close enougth guess.
 mid_temp0 = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
 
 # guess for surface density 
-cs = sound_speed(dict_cte['gamma'],mid_temp0,dict_cte["mu_gas"])
+cs = sound_speed(dict_cte['gamma'],mid_temp0/10,dict_cte["mu_gas"])
 mu = viscosity(cs,dict_cte['alpha'],dict_cte["omegak"])
 sigmag0 = surface_density(dict_cte['Mdot'],mu,dict_cte['cap_lambda'],dict_cte['L'])
 
@@ -336,8 +336,8 @@ h = gas_scale_height(cs,mid_temp0,dict_cte['omegak'])
 zs0 = z_surface(sigmag0,kappa_p0,h)
 
 
-X0 = np.concatenate((mid_temp0/5,mid_temp0,sigmag0,kappa_p0,zs0))
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',jac='2-point')
+X0 = np.concatenate((mid_temp0/5,mid_temp0,sigmag0,zs0))
+sol = opt.root(Residue,X0,args=(dict_cte,Nr),method='hybr')
 
 print(sol)
 
