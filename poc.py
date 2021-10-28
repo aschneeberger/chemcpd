@@ -1,5 +1,7 @@
 """
-proof of concept script for the makalkin stationary model of cpd on (r,z)  
+Proof of concept python script to solve the 9-equations system of the stationary makalkin cpd model 
+The solving method is the MINIPACK HYBRID one to be coherent with the futur F̵̭͈́͠O̷̹̭͌͘RT̶̠͆̚Ṟ̶͎̋AN̵̖͑̿ version of 
+this algorithm 
 """
 
 from math import inf
@@ -13,7 +15,6 @@ from scipy.optimize._lsq.least_squares import soft_l1
 from scipy.special import erfinv
 import matplotlib.pyplot as plt 
 import scipy as sc
-from autograd import grad 
 
 ###################################################################################
 #------------------------------- Constant table ----------------------------------#
@@ -68,6 +69,11 @@ R_disk = R_H / 5                           # Disk radius from Mordasini et al 20
 # -------------- Temperature independent quantities -----------------------------------# 
 ########################################################################################
 
+"""
+Values that will change as jupiter's mass ans accretion rate change but are independant of 
+the tempererature and considered as constant in the résolution
+"""
+
 def specific_angular_momentum(M_p,a_p = 5) :
     """
     Give the cpd specific angular momentun (heller 2015 eq 1)
@@ -113,61 +119,33 @@ def cap_lambda (r,Rc,Rp,R_disk) :
 
 
 ##################################################################################################
-# ------- Temperature determination along with the surface density by recursive optimisation-----#
+# ------- Diskparamers determination by recursive optimisation (MINI PACK HYBRID)----------------#
 ##################################################################################################
 
 """
-Since the temperature depends on the surface density and vise-versa, we need to solve this non 
-linear set of equations via an iterative methode. The iterative least_square  method is taken from the lib scipy.optimize.
-We initialize it with a guess for the midplane temperature profile Tm0.  
+The system to solve is derived fomr Makalkin et al 1995 and 2014, there are 9 equations to solbve 
+with 9 unknowns: 
+    Σ: the surface density 
+    Κs: planck mean opacity at the disk potosphere 
+    ρm: mid-plane density 
+    ρs: photosphere density
+    ρa: addiabatique to isotherme frontier density
+    Tm: mid-plane temperature
+    Ts: photosphere temperature
+    zs: photosphere height from the mid-plane
+    za: addiabatique to isotherm frontier height from the mid-plane 
+
+The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table. 
+To solve the problem we use an initial set of guess derived from the model of Anderson et al 2021
+that do take into account the luminosity if the central planet. 
 """
 
 
-#--------------------- Surface density ---------------------------------------------------------#
+#--------------------- Planck opcity table ---------------------------------------------------------#
 
-def sound_speed(gamma,mid_temp,mug):
-    """
-    Compute the sound speed in the disk midplane 
-
-    inputs:
-    gamma: coefficient de chaleur spécifique [no units]
-    mid_temp: midplane temperature  [K]
-    mug: mean molécular weight [Kg.mol-1]
-
-    output:
-    cs: sound speed [m.s-1]
-    """
-    return np.sqrt(gamma * 8.314 * mid_temp / mug )
-
-def viscosity(cs,alpha,omegak):
-    """
-    Dynamic viscosity of the gas
-
-    input:
-    alpha: alpha viscosity parameter from shakura and sunyaev 
-    cs: sound speed [m.s-1]
-    omegak: keplerian pulsation [s-1]
-
-    return:
-    mu: the dysnamic viscosity [m2.s-1]
-    """
-    return alpha * cs*cs / omegak
-
-
-def gas_scale_height(cs,mid_temp,omgak):
-    """
-    Compute the gas gaussian hydrastatic scale height 
-
-    input:
-    cs: the sound speed [m.s-1]
-    omegak: keplerian pusation [s-1]
-
-
-    """
-    return cs*mid_temp/omgak
-
-def surface_density(Mdot,mu,cap_lambda,L):
-    return Mdot/(3 * np.pi * mu) * cap_lambda/L
+def mean_planck_opacity(temp_surf,Chi) : 
+    
+    return  0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
 
 #-----------------------Surface temperature computation----------------------------------------#
 
@@ -197,16 +175,6 @@ def F_planet(L_p, R_p , zs, r):
 
     return F_p
 
-def z_surface(sigmag,kappa_P,h):
-
-    # value inside erfinv function must be between -1 and 1
-    # It imply that sigmag*kappa_p > 2/3
-    zs= erfinv(1 -  (4/(3*sigmag * kappa_P)) ) * np.sqrt(2) * h 
-    return  zs
-
-def mean_planck_opacity(temp_surf,Chi) : 
-    
-    return 1e-2,0.0, 1e-2 * np.ones(temp_surf.shape) #0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
 
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
@@ -228,48 +196,54 @@ def midplane_temp_residue(mid_temp_guess,temp_surf,gamma,Chi,kappa0,beta,mug,alp
 
     return mid_temp_guess**(5-beta) - temp_surf**(4-beta)*mid_temp_guess - 3/(512*np.pi**2) * mug/(cte.sigma_sb.value * 8.314 * gamma) * (4-beta) * Chi * kappa0 * Mdot**2/alpha * omegak**3 * (cap_lambda/L)**2 * qs**2
 
+#-----------------------------Residue vector construction----------------------------------# 
+"""
+The method from scipy only take 1D vectors, ones have to parse the values on the grid from 
+a 9 by Nr matrix to a 9*Nr vector. 
+The résidue compute the vector function F[X]=R, where R is the residue vectore to minimize to 0 
+Such that the method solve the equation F[X]=0.  
+"""
+
+def Parse(X,Nr):
+    """
+    Parser from the Vector form to the matrix form.
+
+    input:
+    X:variable vector of size 9*Nr
+
+    output:
+    dict_var: dict with variable names as keywords and values as output of size Nr 
+    """
+    dict_var = {}
+
+    dict_var['sigma'] = X[:Nr]
+    dict_var['kappa_p'] = X[Nr:2*Nr]
+    dict_var['T_mid'] = X[2*Nr:3*Nr]
+    dict_var['T_s'] = X[3*Nr:4*Nr]
+    dict_var['z_s'] = X[4*Nr:5*Nr]
+    dict_var['z_add'] = X[5*Nr:6*Nr]
+    dict_var['rho_mid'] = X[6*Nr:7*Nr]
+    dict_var['rho_add'] = X[7*Nr:8*Nr] 
+    dict_var['rho_s'] = X[8*Nr:]
+
+    return dict_var
+
+
+def Serialize(dict_var):
+    """
+    Convert the Matrix to the Vector form
+    """
+
+    return np.concatenate((dict_var['sigma'], dict_var['kappa_p'], dict_var['T_mid'], dict_var['T_s'], dict_var['z_s'], dict_var['z_add'], dict_var['rho_mid'], dict_var['rho_add'], dict_var['rho_s']))
 
 
 def Residue(X,dict_cte,N) :
     """
-    Residue computation to determine bpth surface and midplane temperatures, inserted in the optimization
-    algorithm as a single array [mid_temp,temp_surf].  
+    Compute the equation system vector residues F[X]  
     """
 
     #Values from previous iteration 
-    mid_temp_prev = X[:N]
-    temp_surf_prev = X[N:2*N]
-    sigmag_prev = X[2*N:3*N]
-    zs_prev = X[3*N:]
-
-    #Compute new values (4 eq with 4 unknowns)
-
-    # Disk properties depending on temperature
-    cs = sound_speed(dict_cte['gamma'],mid_temp_prev,dict_cte["mu_gas"])
-    mu = viscosity(cs,dict_cte['alpha'],dict_cte["omegak"])
-    sigmag = surface_density(dict_cte['Mdot'],mu,dict_cte['cap_lambda'],dict_cte['L'])
-    h = gas_scale_height(cs,mid_temp_prev,dict_cte['omegak'])
-
-    #Surface properties depending on surface temperature
-    kappa0,beta,kappa_p = mean_planck_opacity(temp_surf_prev,dict_cte['Chi'])
-    zs = z_surface(sigmag_prev,kappa_p,h)
-
-    #Heating from planet luminosity depends on surface géometry
-    F_p  = F_planet(dict_cte['L_p'],dict_cte['R_p'],zs_prev,dict_cte['r'])
-
-    #Compute of surface temp and resulting residue
-    temp_surface= surface_temperature(sigmag_prev,dict_cte['F_vis'],dict_cte['F_acc'],F_p,dict_cte['Ks'],dict_cte['temp_neb'],kappa_p)
-
-    res_temp_surf = temp_surface - temp_surf_prev
-
-    #Compute of midplane temperatureand residue 
-
-    qs = surface_mass_coordinate(kappa_p,sigmag_prev)
-
-    res_mid_temp = midplane_temp_residue(X[0:N],temp_surface,dict_cte["gamma"],dict_cte["Chi"],kappa0,beta,dict_cte["mu_gas"],dict_cte['alpha'],qs,dict_cte["cap_lambda"],dict_cte['omegak'],dict_cte["L"])
-
-    return np.concatenate((res_mid_temp,res_temp_surf,(sigmag-sigmag_prev),(zs-zs_prev)))
-
+    
 
 
 #######################################################################################
