@@ -35,7 +35,7 @@ alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 1000 # Number of points in the grid 
+Nr = 100 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
@@ -178,8 +178,7 @@ def F_planet(L_p, R_p , zs, r):
 def surface_temperature(sigmag,F_vis,F_acc,F_p,ks,temp_neb,kappa_p):
       
 
-      temp_surf = ( ((1 + 1/(2*kappa_p*sigmag) )/cte.sigma_sb.value) * (F_acc + F_vis + ks*F_p) + temp_neb**4 )**0.25 
-      temp_surf[temp_surf<0.0] = 0.0
+      temp_surf = (( (1 + (2*kappa_p*sigmag)**(-1) )/cte.sigma_sb.value) * (F_acc + F_vis + ks*F_p) + temp_neb**4 )**0.25 
 
       return temp_surf
 
@@ -241,8 +240,9 @@ def Residue(X,dict_cte,N) :
     The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table from makalkin et al 1995
     """
 
+
     #Values from the previous iteration 
-    dict_var = Parse(X,Nr)
+    dict_var = Parse(X,N)
 
     # Mean planck opacity at photosphere heigh 
     kappa_p0 , beta, kappa_p = mean_planck_opacity(dict_var['T_s'], dict_cte['Chi'])
@@ -309,7 +309,12 @@ def Residue(X,dict_cte,N) :
 
     # return all residues as single vector of size 8*Nr
 
-    res_vec = np.concatenate( (res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39) )
+    res_vec = np.concatenate( (res_10/dict_cte['Mdot'],res_17,res_23,res_24,res_31,res_36,res_37,res_39) )
+
+    # plt.loglog(dict_cte['r'],dict_var['T_s'])
+    # plt.loglog(dict_cte['r'],res_17)
+    # plt.pause(0.1)
+    # plt.cla()
 
     return res_vec
 
@@ -375,34 +380,34 @@ dict_var['z_s'] = 0.03 * h
 
 # We find sigma from the steady state radial equation
 mu = dict_cte['alpha'] * c_s**2 / dict_cte["omegak"]
-dict_var['sigma'] = dict_cte['Mdot'] * dict_cte['cap_lambda'] / (3*np.pi * mu)
+dict_var['sigma'] = dict_cte['Mdot'] * dict_cte['cap_lambda'] / (3*np.pi * mu) + 0.1
 
 #Approximating the density ρ(,rz) profile on z as a gaussian one
-dict_var['rho_mid'] = np.sqrt(2/np.pi) * dict_var['sigma'] / (2*h)
+dict_var['rho_mid'] = np.sqrt(2/np.pi) * dict_var['sigma'] / (2*h) +0.1
 
 
 #One can find ρ_add from eq 36 in makalakin 1995
-dict_var['rho_add'] = dict_var['rho_mid'] * (dict_var['T_s']/dict_var['T_mid'])**(1/(dict_cte['gamma']-1))
+dict_var['rho_add'] = dict_var['rho_mid'] * (dict_var['T_s']/dict_var['T_mid'])**(1/(dict_cte['gamma']-1)) +0.1
 
 #And z_add from eq 37 
-dict_var['z_add'] = np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['mu_gas'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak']
+dict_var['z_add'] = np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['mu_gas'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak'] + 0.1
 
 #We find z_s by solving equation 23 for z_s, all other variables are known
-dict_var['rho_s'] = dict_var['rho_add'] * np.exp(- dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2)/h**2)
+dict_var['rho_s'] = dict_var['rho_add'] * np.exp(- dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2)/h**2) +0.1
 
 X0 = Serialize(dict_var)
 
-# for keyword in dict_var :
-#     plt.loglog(dict_cte['r'],dict_var[keyword], label = keyword)
-#     plt.legend()
-#     plt.show()
 
-sol = opt.root(Residue,X0,args=(dict_cte,Nr),method='hybr')
 
-print(sol)
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf')
 
-plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[:Nr],label='midplane')
-plt.plot(dict_cte['r']/cte.R_jup.value,sol.x[Nr:2*Nr],label='surface')
+dict_sol = Parse(sol.x,Nr)
+
+print(sol.message)
+
+
+plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
+plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_s'],label='surface')
 #plt.plot(dict_cte['r']/cte.R_jup.value,X0[Nr:],label='guess')
 plt.legend()
 plt.xscale('log')
