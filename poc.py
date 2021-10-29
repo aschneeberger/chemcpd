@@ -424,7 +424,7 @@ low_bounds['rho_s'] = 0.0 * np.ones(Nr)
 Xup = Serialize(up_bounds)
 Xlow = Serialize(low_bounds)
 
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr), bounds=(Xlow,Xup),method='trf')
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr), bounds=(Xlow,Xup),method='dogbox')
 
 dict_sol = Parse(sol.x,Nr)
 
