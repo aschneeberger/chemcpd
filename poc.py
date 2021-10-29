@@ -261,17 +261,17 @@ def Residue(X,dict_cte,N) :
     #Eq 23:  Addiabatique altitude gas density 
     
     c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas']) # mid plane sound speed 
-    h = cs / dict_cte['omegak'] # disk scale heghy
+    h = c_s / dict_cte['omegak'] # disk scale heghy
 
     res_23 = dict_var['rho_add'] - dict_var['rho_s'] * np.exp( dict_cte['gamma']/2.0 * (dict_var['z_s'] - dict_var['z_add']) / h )
 
     #Eq 24: At z=z_s the optical depth is 2/3
 
     # constant in integration
-    b_s = 0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omagak']**2 * dict_var['z_s']**2 / dict_var['T_s'] 
+    b_s = 0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omegak']**2 * dict_var['z_s']**2 / dict_var['T_s'] 
 
     # The int.quad do the integration of the lambda function from 1 to infinity
-    res_24 = 2/3 -  kappa_p * dict_var['rho_s'] * dict_var['z_s'] * int.quad(lambda eps : np.exp(b_s*(1-eps**2)), 1, np.inf)
+    res_24 = 2/3 -  kappa_p * dict_var['rho_s'] * dict_var['z_s'] * int.quad_vec(lambda eps : np.exp(b_s*(1-eps**2)), 1, np.inf)[0]
 
     #Eq 31 (or 32) The residue of the midplane temperature equation
 
@@ -287,18 +287,25 @@ def Residue(X,dict_cte,N) :
 
     #Eq 37: Addiabatique to isotherm frontier height 
 
-    res_37 = dict_var['z_add'] - np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['omegak'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak']
+    res_37 = dict_var['z_add'] - np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['mu_gas'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak']
 
     #Eq 39 we should be able to retreive the surface density from the density profile rho(r,z)
 
     # integration parameters
-    b_a =  0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omagak']**2 * dict_var['z_add']**2 / dict_var['T_s'] 
+    b_a =  0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omegak']**2 * dict_var['z_add']**2 / dict_var['T_s'] 
     zeta_a = dict_var['z_add']/dict_var['z_s']
 
     # function to integration to get 
     function_a = lambda zeta : (1 + (dict_cte['gamma'] -1)/dict_cte['gamma'] * b_a * (1 - zeta**2) ) ** (1/(dict_cte['gamma']-1))
+    function_s = []
+    
+    # tournaround to integrate a vector with variable boundaries 
+    for i in range(Nr) :
 
-    res_39 = 2 * dict_var['z_add'] * dict_var['rho_add'] * int.quad(function_a,0,1) + 2 *dict_var['z_s'] * dict_var['rho_s'] * int.quad(lambda zeta : np.exp( b_s * (1- zeta**2), zeta_a, 1))
+        function_s.append(int.quad_vec(lambda zeta : np.exp( b_s[i] * (1- zeta**2)),zeta_a[i], 1)[0])
+    function_s = np.array(function_s)
+
+    res_39 = dict_var['sigma'] - 2 * dict_var['z_add'] * dict_var['rho_add'] * int.quad_vec(function_a,0,1)[0] + 2 *dict_var['z_s'] * dict_var['rho_s'] * function_s
 
     # return all residues as single vector of size 8*Nr
 
@@ -350,16 +357,45 @@ dict_cte['F_acc'] = F_acc(Xd,Chi,M_p,Mdot,R_c,dict_cte['r'])
 
 #---------------Setting the initial guess from a prescription of Anderson et al 2021------#
 """
-The solver need an initial guess close enougth to not diverge. since the tempertaure dependence come the gas surface density
-and the heating via planet luminosity. A simple prescription from anderson on an equilibrium between disk black body radiation 
-and viscous heating is a close enougth guess.
+The solver need an initial guess close enougth to not diverge.
+We use a prescription of temperature from Anderson et al 2021 and a gaussian gas density profile on z
 """
 
+dict_var = {}
+
 # From eq 4 in Anderson 2021 guess of surface and mid plane temps 
-mid_temp0 = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
+dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
+dict_var['T_s'] = dict_var['T_mid']/5.0
+
+c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas'])
+h = c_s / dict_cte['omegak']
+
+# approximation de z_s from the gas scale height from heller 2015
+dict_var['z_s'] = 0.03 * h 
+
+# We find sigma from the steady state radial equation
+mu = dict_cte['alpha'] * c_s**2 / dict_cte["omegak"]
+dict_var['sigma'] = dict_cte['Mdot'] * dict_cte['cap_lambda'] / (3*np.pi * mu)
+
+#Approximating the density ρ(,rz) profile on z as a gaussian one
+dict_var['rho_mid'] = np.sqrt(2/np.pi) * dict_var['sigma'] / (2*h)
 
 
+#One can find ρ_add from eq 36 in makalakin 1995
+dict_var['rho_add'] = dict_var['rho_mid'] * (dict_var['T_s']/dict_var['T_mid'])**(1/(dict_cte['gamma']-1))
 
+#And z_add from eq 37 
+dict_var['z_add'] = np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['mu_gas'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak']
+
+#We find z_s by solving equation 23 for z_s, all other variables are known
+dict_var['rho_s'] = dict_var['rho_add'] * np.exp(- dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2)/h**2)
+
+X0 = Serialize(dict_var)
+
+# for keyword in dict_var :
+#     plt.loglog(dict_cte['r'],dict_var[keyword], label = keyword)
+#     plt.legend()
+#     plt.show()
 
 sol = opt.root(Residue,X0,args=(dict_cte,Nr),method='hybr')
 
