@@ -29,7 +29,7 @@ year = 365*24*3600          # year in seconds
 sigma_sb = cte.sigma_sb
 Xd = 0.006 # dust to gas mass ratio in the PSN at Jupiter's formation location from makalkin 2014
 Chi = 1 # Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). Can be btw 1 and 1.5 (Ruskol 2006)
-mu_gas = 2.341 # mean molecular weight 
+mu_gas = 2.341e-3 # mean molecular weight 
 Ks = 0.2 # CDP radiation absorption factor 
 alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
@@ -50,7 +50,7 @@ L_p_high = 1e-4 * L_sun     # later Jupiter luminosity after accreion runaway, a
 L_p =L_p_high 
 
 Mdot_pic_accretion = 1e-5 * M_earth/year #Accretion rate at accretion runaway  
-Mdot_high = 1e-8 * M_jup/year #4e-6 * M_earth/year     # Later accretion rate after 1Myr
+Mdot_high = 4e-6 * M_earth/year     # Later accretion rate after 1Myr
 
 Mdot = Mdot_high 
 
@@ -144,7 +144,7 @@ that do take into account the luminosity if the central planet.
 
 def mean_planck_opacity(temp_surf,Chi) : 
     
-    return  0.1/10 , 0.5 ,Chi * 0.1 * temp_surf**0.5/10
+    return  0.1/10 , 0.5 ,Chi * 0.1 * (temp_surf**0.5)/10
 
 #-----------------------Surface temperature computation----------------------------------------#
 
@@ -261,7 +261,7 @@ def Residue(X,dict_cte,N) :
     #Eq 23:  Addiabatique altitude gas density 
     
     c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas']) # mid plane sound speed 
-    h = c_s / dict_cte['omegak'] # disk scale heghy
+    h = c_s / dict_cte['omegak'] # disk scale height
 
     res_23 = dict_var['rho_add'] - dict_var['rho_s'] * np.exp( dict_cte['gamma']/2.0 * (dict_var['z_s'] - dict_var['z_add']) / h )
 
@@ -395,15 +395,38 @@ dict_var['z_add'] = np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamm
 #We find z_s by solving equation 23 for z_s, all other variables are known
 dict_var['rho_s'] = dict_var['rho_add'] * np.exp(- dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2)/h**2) +0.1
 
-X0 = Serialize(dict_var)
+X0 = Serialize(dict_var) # initial guesses
 
+# upper bouds 
+up_bounds = {}
 
+up_bounds['T_mid'] = 1e6 * np.ones(Nr)
+up_bounds['T_s'] = 1e6 * np.ones(Nr)
+up_bounds['z_s'] = 1e3 * R_p * np.ones(Nr)
+up_bounds['z_add'] = 1e3 * R_p * np.ones(Nr)
+up_bounds['sigma'] = 1e6 * np.ones(Nr)
+up_bounds['rho_mid'] = 1e6 * np.ones(Nr)
+up_bounds['rho_add'] = 1e6 * np.ones(Nr)
+up_bounds['rho_s'] = 1e6 * np.ones(Nr)
 
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf')
+#lower bounds
+
+low_bounds = {}
+low_bounds['T_mid'] = 0.0 * np.ones(Nr)
+low_bounds['T_s'] = 0.0 * np.ones(Nr)
+low_bounds['z_s'] = 1e-4 * R_p * np.ones(Nr)
+low_bounds['z_add'] = 1e-4* R_p * np.ones(Nr)
+low_bounds['sigma'] = 0.0 * np.ones(Nr)
+low_bounds['rho_mid'] = 0.0 * np.ones(Nr)
+low_bounds['rho_add'] = 0.0 * np.ones(Nr)
+low_bounds['rho_s'] = 0.0 * np.ones(Nr)
+
+Xup = Serialize(up_bounds)
+Xlow = Serialize(low_bounds)
+
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr), bounds=(Xlow,Xup),method='trf')
 
 dict_sol = Parse(sol.x,Nr)
-
-print(sol.message)
 
 
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
