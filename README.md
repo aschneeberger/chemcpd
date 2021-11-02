@@ -10,4 +10,4 @@ Each step can be precomputed independantly from the others
 
 Currently the model is tested with the python file `poc.py` and its test unit tests `test_poc.py` 
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=1%2Bsin%28mc%5E2%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)
+$`a^2+b^2=c^2`$.
