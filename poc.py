@@ -35,7 +35,7 @@ alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 100 # Number of points in the grid 
+Nr = 500 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
