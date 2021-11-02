@@ -10,4 +10,4 @@ Each step can be precomputed independantly from the others
 
 Currently the model is tested with the python file `poc.py` and its test unit tests `test_poc.py` 
 
-$`a^2+b^2=c^2`$.
+$`a^2+b^2=\frac{1}{c}`$.
