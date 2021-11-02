@@ -35,7 +35,7 @@ alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 500 # Number of points in the grid 
+Nr = 200 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
@@ -268,10 +268,11 @@ def Residue(X,dict_cte,N) :
     #Eq 24: At z=z_s the optical depth is 2/3
 
     # constant in integration
-    b_s = 0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omegak']**2 * dict_var['z_s']**2 / dict_var['T_s'] 
+    b_s = 0.5 * (dict_cte['mu_gas'] / 8.314)  * ((dict_cte['omegak']**2 * dict_var['z_s']**2) / dict_var['T_s'] )
+   
 
     # The int.quad do the integration of the lambda function from 1 to infinity
-    res_24 = 2/3 -  kappa_p * dict_var['rho_s'] * dict_var['z_s'] * int.quad_vec(lambda eps : np.exp(b_s*(1-eps**2)), 1, np.inf)[0]
+    res_24 = 2/3 -  kappa_p * dict_var['rho_s'] * dict_var['z_s'] * int.quad_vec(lambda eps : np.exp(b_s*(1-eps**2)), 1, 10)[0]
 
     #Eq 31 (or 32) The residue of the midplane temperature equation
 
@@ -295,17 +296,22 @@ def Residue(X,dict_cte,N) :
     b_a =  0.5 * dict_cte['mu_gas'] / 8.314  * dict_cte['omegak']**2 * dict_var['z_add']**2 / dict_var['T_s'] 
     zeta_a = dict_var['z_add']/dict_var['z_s']
 
+    assert zeta_a.all() >= 1.0,  "z_add must be larger than z_s" # Safety check for consistency
+
     # function to integration to get 
     function_a = lambda zeta : (1 + (dict_cte['gamma'] -1)/dict_cte['gamma'] * b_a * (1 - zeta**2) ) ** (1/(dict_cte['gamma']-1))
-    function_s = []
     
+
+    function_s = []
     # tournaround to integrate a vector with variable boundaries 
     for i in range(Nr) :
 
         function_s.append(int.quad_vec(lambda zeta : np.exp( b_s[i] * (1- zeta**2)),zeta_a[i], 1)[0])
     function_s = np.array(function_s)
 
-    res_39 = dict_var['sigma'] - 2 * dict_var['z_add'] * dict_var['rho_add'] * int.quad_vec(function_a,0,1)[0] + 2 *dict_var['z_s'] * dict_var['rho_s'] * function_s
+    res_39 = dict_var['sigma'] - 2 * dict_var['z_add'] * dict_var['rho_add'] * int.quad_vec(function_a,0,1)[0] - 2 *dict_var['z_s'] * dict_var['rho_s'] * function_s
+
+
 
     # return all residues as single vector of size 8*Nr
 
@@ -346,7 +352,7 @@ dict_cte['L'] = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient
 J = specific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
 R_c = J**2 / (cte.G.value * M_p) # Centrifuge radius [m] 
 
-dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(50*cte.R_jup.value),Nr) # computational log grid, non linear
+dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(2*cte.R_jup.value),Nr) # computational log grid, non linear
 
 dict_cte['cap_lambda'] = cap_lambda(dict_cte['r'],R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
 
@@ -369,20 +375,17 @@ We use a prescription of temperature from Anderson et al 2021 and a gaussian gas
 dict_var = {}
 
 # From eq 4 in Anderson 2021 guess of surface and mid plane temps 
-dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot']*year * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
-dict_var['T_s'] = dict_var['T_mid']/5.0
+dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot'] * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 *10
+dict_var['T_s'] = dict_var['T_mid'] / 5
 
 c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas'])
 h = c_s / dict_cte['omegak']
-
-# approximation de z_s from the gas scale height from heller 2015
-dict_var['z_s'] = 0.03 * h 
 
 # We find sigma from the steady state radial equation
 mu = dict_cte['alpha'] * c_s**2 / dict_cte["omegak"]
 dict_var['sigma'] = dict_cte['Mdot'] * dict_cte['cap_lambda'] / (3*np.pi * mu) + 0.1
 
-#Approximating the density ρ(,rz) profile on z as a gaussian one
+#Approximating the density ρ(r,z) profile on z as a gaussian one
 dict_var['rho_mid'] = np.sqrt(2/np.pi) * dict_var['sigma'] / (2*h) +0.1
 
 
@@ -391,6 +394,9 @@ dict_var['rho_add'] = dict_var['rho_mid'] * (dict_var['T_s']/dict_var['T_mid'])*
 
 #And z_add from eq 37 
 dict_var['z_add'] = np.sqrt( (2 * dict_cte['gamma'] * 8.314) / ( (dict_cte['gamma'] -1 ) * dict_cte['mu_gas'] ) ) * np.sqrt( dict_var['T_mid'] - dict_var['T_s'] ) / dict_cte['omegak'] + 0.1
+
+# approximation de z_s from the gas scale height from heller 2015
+dict_var['z_s'] = 2.0 * dict_var['z_add'] 
 
 #We find z_s by solving equation 23 for z_s, all other variables are known
 dict_var['rho_s'] = dict_var['rho_add'] * np.exp(- dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2)/h**2) +0.1
@@ -424,15 +430,17 @@ low_bounds['rho_s'] = 0.0 * np.ones(Nr)
 Xup = Serialize(up_bounds)
 Xlow = Serialize(low_bounds)
 
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr), bounds=(Xlow,Xup),method='dogbox')
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='lm')
 
 dict_sol = Parse(sol.x,Nr)
 
 
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_s'],label='surface')
-#plt.plot(dict_cte['r']/cte.R_jup.value,X0[Nr:],label='guess')
+plt.plot(dict_cte['r']/cte.R_jup.value,dict_var['T_mid'], label= 'init T_mid')
 plt.legend()
+plt.xlabel('radius [$R_{jup}$]')
+plt.ylabel('temperature (K)')
 plt.xscale('log')
 plt.yscale('log')
 plt.show()
