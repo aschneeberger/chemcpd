@@ -165,7 +165,7 @@ def F_planet(L_p, R_p , zs, r):
     eps = np.arctan((4/(3*np.pi) * R_p) / np.sqrt(r*r + zs*zs))
 
     dzsdr = np.gradient(zs,r,edge_order=2)
-    #dzsdr[-1] = dzsdr[-2] # assume the same disk slope at the edge
+    dzsdr[-1] = dzsdr[-2] # assume the same disk slope at the edge
 
     eta = np.arctan(dzsdr) - np.arctan(zs/r)
 
@@ -202,7 +202,7 @@ The résidue compute the vector function F[X]=R, where R is the residue vectore 
 Such that the method solve the equation F[X]=0.  
 """
 
-def Parse(X,Nr):
+def Parse_solution(X,Nr):
     """
     Parser from the Vector form to the matrix form.
 
@@ -225,6 +225,28 @@ def Parse(X,Nr):
 
     return dict_var
 
+def Parse_residue(X,Nr):
+    """
+    Parser from the Vector form to the matrix form.
+
+    input:
+    X:variable vector of size 8*Nr
+
+    output:
+    dict_var: dict with variable names as keywords and values as output of size Nr 
+    """
+    dict_var = {}
+
+    dict_var['res_10'] = X[:Nr]
+    dict_var['res_17'] = X[Nr:2*Nr]
+    dict_var['res_23'] = X[2*Nr:3*Nr]
+    dict_var['res_24'] = X[3*Nr:4*Nr]
+    dict_var['res_31'] = X[4*Nr:5*Nr]
+    dict_var['res_36'] = X[5*Nr:6*Nr]
+    dict_var['res_37'] = X[6*Nr:7*Nr] 
+    dict_var['res_39'] = X[7*Nr:]
+
+    return dict_var
 
 def Serialize(dict_var):
     """
@@ -242,7 +264,7 @@ def Residue(X,dict_cte,N) :
 
 
     #Values from the previous iteration 
-    dict_var = Parse(X,N)
+    dict_var = Parse_solution(X,N)
 
     # Mean planck opacity at photosphere heigh 
     kappa_p0 , beta, kappa_p = mean_planck_opacity(dict_var['T_s'], dict_cte['Chi'])
@@ -315,7 +337,7 @@ def Residue(X,dict_cte,N) :
 
     # return all residues as single vector of size 8*Nr
 
-    res_vec = np.concatenate( (res_10/dict_cte['Mdot'],res_17,res_23,res_24,res_31,res_36,res_37,res_39) )
+    res_vec = np.concatenate( (res_10/dict_cte['Mdot'],res_17/10,res_23,res_24/1e3,res_31/10,res_36,res_37/cte.R_jup.value,res_39/1e5) )
 
     # plt.loglog(dict_cte['r'],dict_var['T_s'])
     # plt.loglog(dict_cte['r'],res_17)
@@ -375,7 +397,7 @@ We use a prescription of temperature from Anderson et al 2021 and a gaussian gas
 dict_var = {}
 
 # From eq 4 in Anderson 2021 guess of surface and mid plane temps 
-dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot'] * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 *10
+dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot'] * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
 dict_var['T_s'] = dict_var['T_mid'] / 5
 
 c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas'])
@@ -430,9 +452,9 @@ low_bounds['rho_s'] = 0.0 * np.ones(Nr)
 Xup = Serialize(up_bounds)
 Xlow = Serialize(low_bounds)
 
-sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='lm')
+sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',bounds=(Xlow,Xup))
 
-dict_sol = Parse(sol.x,Nr)
+dict_sol = Parse_solution(sol.x,Nr)
 
 
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
