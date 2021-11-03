@@ -35,7 +35,7 @@ alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 200 # Number of points in the grid 
+Nr = 1000 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
@@ -374,7 +374,7 @@ dict_cte['L'] = 1 - np.sqrt(R_p/R_disk)   # momentum transfert coeficient
 J = specific_angular_momentum(M_p)  # Specific angular momentum [m².s^-1]
 R_c = J**2 / (cte.G.value * M_p) # Centrifuge radius [m] 
 
-dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(2*cte.R_jup.value),Nr) # computational log grid, non linear
+dict_cte['r'] = np.logspace(np.log10(1.2*R_p),np.log10(50*cte.R_jup.value),Nr) # computational log grid, non linear
 
 dict_cte['cap_lambda'] = cap_lambda(dict_cte['r'],R_c,R_p,R_disk) # Lambda from equations 2 and 3 from makalkin 2014
 
@@ -397,7 +397,7 @@ We use a prescription of temperature from Anderson et al 2021 and a gaussian gas
 dict_var = {}
 
 # From eq 4 in Anderson 2021 guess of surface and mid plane temps 
-dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot'] * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 
+dict_var['T_mid'] = ((3*dict_cte['omegak']**2 * dict_cte['Mdot'] * dict_cte['cap_lambda']) / (10 * np.pi * cte.sigma_sb.value)  + temp_neb**4)**0.25 *5
 dict_var['T_s'] = dict_var['T_mid'] / 5
 
 c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas'])
@@ -463,6 +463,6 @@ plt.plot(dict_cte['r']/cte.R_jup.value,dict_var['T_mid'], label= 'init T_mid')
 plt.legend()
 plt.xlabel('radius [$R_{jup}$]')
 plt.ylabel('temperature (K)')
-plt.xscale('log')
-plt.yscale('log')
+# plt.xscale('log')
+# plt.yscale('log')
 plt.show()
