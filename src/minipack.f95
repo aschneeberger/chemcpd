@@ -1,8 +1,6 @@
 module minipack 
 
-implicit none 
-
-contains 
+ contains
 
 subroutine chkder ( m, n, x, fvec, fjac, ldfjac, xp, fvecp, mode, err )
 
@@ -249,7 +247,7 @@ subroutine dogleg ( n, r, lr, diag, qtb, delta, x )
   real ( kind = rk ) bnorm
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsmch
   real ( kind = rk ) gnorm
   integer i
@@ -388,6 +386,7 @@ subroutine dogleg ( n, r, lr, diag, qtb, delta, x )
 
   return
 end
+
 function enorm ( n, x )
 
 !*****************************************************************************80
@@ -425,7 +424,7 @@ function enorm ( n, x )
 !
 !    Input, real ( kind = rk ) X(N), the vector whose norm is desired.
 !
-!    Output, real ( kind = rk ) ENORM, the Euclidean norm of the vector.
+!    Output, !real ( kind = rk ) enorm, the Euclidean norm of the vector.
 !
   implicit none
 
@@ -438,7 +437,8 @@ function enorm ( n, x )
   enorm = sqrt ( sum ( x(1:n) ** 2 ))
 
   return
-end
+end function 
+
 function enorm2 ( n, x )
 
 !*****************************************************************************80
@@ -488,7 +488,7 @@ function enorm2 ( n, x )
 !
 !    Input, real ( kind = rk ) X(N), the vector whose norm is desired.
 !
-!    Output, real ( kind = rk ) ENORM2, the Euclidean norm of the vector.
+!    Output, !real ( kind = rk ) enorm2, the Euclidean norm of the vector.
 !
   implicit none
 
@@ -1011,7 +1011,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
   real ( kind = rk ) actred
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
-  real ( kind = rk ) enorm
+  !!real ( kind = rk ) enorm
   real ( kind = rk ) epsfcn
   real ( kind = rk ) epsmch
   real ( kind = rk ) factor
@@ -1103,7 +1103,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
     go to 300
   end if
 
-  fnorm = enorm ( n, fvec )
+  fnorm = enorm( n, fvec )
 !
 !  Determine the number of calls to FCN needed to compute the jacobian matrix.
 !
@@ -1694,7 +1694,7 @@ subroutine hybrj ( fcn, n, x, fvec, fjac, ldfjac, xtol, maxfev, diag, mode, &
   real ( kind = rk ) actred
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsmch
   real ( kind = rk ) factor
   external fcn
@@ -2426,7 +2426,7 @@ subroutine lmder ( fcn, m, n, x, fvec, fjac, ldfjac, ftol, xtol, gtol, maxfev, &
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
   real ( kind = rk ) dirder
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsmch
   real ( kind = rk ) factor
   external fcn
@@ -3116,7 +3116,7 @@ subroutine lmdif ( fcn, m, n, x, fvec, ftol, xtol, gtol, maxfev, epsfcn, &
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
   real ( kind = rk ) dirder
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsfcn
   real ( kind = rk ) epsmch
   real ( kind = rk ) factor
@@ -3737,7 +3737,7 @@ subroutine lmpar ( n, r, ldr, ipvt, diag, qtb, delta, par, x, sdiag )
   real ( kind = rk ) diag(n)
   real ( kind = rk ) dwarf
   real ( kind = rk ) dxnorm
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) gnorm
   real ( kind = rk ) fp
   integer ipvt(n)
@@ -4094,7 +4094,7 @@ subroutine lmstr ( fcn, m, n, x, fvec, fjac, ldfjac, ftol, xtol, gtol, maxfev, &
   real ( kind = rk ) delta
   real ( kind = rk ) diag(n)
   real ( kind = rk ) dirder
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsmch
   real ( kind = rk ) factor
   external fcn
@@ -4847,7 +4847,7 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
   real ( kind = rk ) a(lda,n)
   real ( kind = rk ) acnorm(n)
   real ( kind = rk ) ajnorm
-  real ( kind = rk ) enorm
+  !real ( kind = rk ) enorm
   real ( kind = rk ) epsmch
   integer i4_temp
   integer ipvt(lipvt)
@@ -4866,7 +4866,7 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
 !  Compute the initial column norms and initialize several arrays.
 !
   do j = 1, n
-    acnorm(j) = enorm ( m, a(1:m,j) )
+    acnorm(j) = enorm( m, a(1:m,j) )
   end do
 
   rdiag(1:n) = acnorm(1:n)
