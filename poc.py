@@ -456,6 +456,8 @@ sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',bounds=(Xlow,
 
 dict_sol = Parse_solution(sol.x,Nr)
 
+print(sol.message)
+np.save("solution.npy",sol.x)
 
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_s'],label='surface')
