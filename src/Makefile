@@ -1,13 +1,16 @@
 all: chemcpd.exe
 
-chemcpd.exe : main.f95 residue.o solver.o 
-	gfortran  main.f95 solver.o residue.o -o chemcpd.exe 
+chemcpd.exe : main.f95  minipack.o residue.o solver.o 
+	gfortran  main.f95 minipack.o solver.o residue.o -o chemcpd.exe 
 	make clean
 
 .PHONY : clean
 
 solver.o : solver.f95 
 	gfortran -c solver.f95
+
+minipack.o : minipack.f95 
+	gfortran -c minipack.f95
 
 residue.o : residue.f95 
 	gfortran -c residue.f95

@@ -1,4 +1,5 @@
 MODULE RESIDUE 
+use minipack
 IMPLICIT NONE 
 CONTAINS 
 
@@ -9,4 +10,17 @@ WRITE(*,*) "HELLO RES"
 
 END SUBROUTINE
 
-END MODULE
+
+subroutine Fcn ( n, x, res ,iflag )
+  
+    integer :: n
+    real( kind = 8 ) :: res(n)
+    integer :: iflag
+    real ( kind = 8 ) ::  x(n)
+
+    res(1) = x(1)**2 + x(1)*x(2)
+    res(2) = x(1) + x(2)
+
+end subroutine
+
+END MODULE   
