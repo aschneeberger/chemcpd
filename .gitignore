@@ -2,3 +2,7 @@
 /__pycache__
 /.vscode
 .pytest_cache
+*.o
+*.exe
+*.mod
+*.out
