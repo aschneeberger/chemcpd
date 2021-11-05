@@ -20,9 +20,11 @@ double precision , parameter :: c_L_sun = 3.828d+26     ! Sun Limunosity [W]
 double precision , parameter :: c_year = 365.0*24.0*3600.0 ! Year [s] 
 double precision , parameter :: c_sigma_sb = 5.6703744191844314d-08 ! Steffan-Boltzman constant 
 double precision , parameter :: c_au = 149597870700.0 ! Astronomical unit [m]
+double precision , parameter :: c_G = 6.6743d-11    ! Gravitational constant [m3.Kg-1.s-1] 
 
 !Other sources 
 double precision, parameter :: c_gamma = 1.45  ! Addiabatique compression factor for perfect gas
+double precision , parameter :: c_pi = 4.0d0 * atan(1.0d0)
 
 end module 
 
@@ -78,5 +80,6 @@ double precision , parameter :: p_R_p = 1.4 * c_R_jup               ! planet rad
 double precision , parameter :: p_M_dot = 4.0d-6 * c_M_earth/c_year   ! Accretion rate [Kg.s-1] 
 double precision , parameter :: p_R_hill = 5.0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
 double precision , parameter :: p_R_disk = p_R_hill / 5.0           ! Disk size [m]
+double precision , parameter :: p_L = sqrt(p_R_p/p_R_disk)          ! angular momentum transfert coeficient 
 
 end module 

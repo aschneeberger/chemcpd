@@ -24,37 +24,41 @@ implicit none
 
 contains 
 
-function cap_lambda(r, R_c) 
+function ang_mom_factor(r, R_c, N) 
 ! Function that compute the angular momentum factor Λ. 
 ! following equation 2 and 3 from Makalkin et al 2014. 
 ! -------
 ! Input :
 ! -------
 ! 
-! r : double precision : radius [m]
+! N : Integer : grid size 
+! r(N) : double precision : radius [m]
 ! R_c : double precision : Centrifugal radius [m]
 !
 ! -------
 ! Output :
 ! -------
 ! 
-! cap_lambda: double precision : angular momentum factor 
+! cap_lambda(N): double precision : angular momentum factor 
 
-    double precision cap_lambda 
-    double precision r 
-    double precision R_c 
+    integer :: N
+    double precision , dimension(N) ::  cap_lambda 
+    double precision , dimension(N) :: r 
+    double precision :: R_c 
+    double precision , dimension(N) :: ang_mom_factor 
 
     ! The angular mommentum is devided in two sections, closer and further than R_c 
 
     ! Closer than R_c, the gas infall from the PSN contribute to the total CPD angular momentum
-    if (r .lt. R_c) then 
+    where (r .lt. R_c) 
         cap_lambda =  1 - 1/5 * (r/R_c)**2 - sqrt(p_R_p/r) - 4/5 * sqrt(R_c/p_R_disk) + 4/5 * sqrt((p_R_p*R_c)/(p_R_disk * r)) &
                     & + 0.2 * sqrt(p_R_p/p_R_disk) * (r/R_c)**2 
     
     ! Further than R_c, the gas drift outward and there is no more infall 
-    else 
+    elsewhere  
         cap_lambda = 0.8 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8*sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
-    end if 
+   
+    end where 
 
 end function 
 
@@ -66,14 +70,14 @@ function spe_ang_mom()
 ! Inputs: 
 !--------
 !
-! variables are taken from the constant table, in the future they will evolve with time
+! Variables are taken from the constant table, in the future they will evolve with time
 !--------
 ! Output:
 !--------
 ! 
 ! spe_ang_mom : double precision , specific angular momentum [m2.s-1]
 
-    double precision spe_ang_mom 
+    double precision ::  spe_ang_mom 
 
     if (p_M_p .lt. c_M_jup) then 
         spe_ang_mom = 7.8d11 * (p_M_p/c_M_jup) * (p_a_p/c_au)**(7/4)
@@ -84,6 +88,101 @@ function spe_ang_mom()
 
 end function
 
+function centrifugal_radius() 
+! Give the centrifugal radius from the constant table 
+! Forumal from Makalkin 2014 
+!-------
+!Inputs:
+!-------
+!
+! Variables are taken from the constant table, in the future they will evolve with time
+!-------
+!Output:
+!-------
+!
+! centrifugal_radius : double precision : centrifugal radius (radius at witch Fgrav = Fcentrifuge) [m]  
+
+    double precision  :: centrifugal_radius 
+    double precision  :: J ! Special angular momentum 
+    
+    J = spe_ang_mom()
+    centrifugal_radius = J**2.0 /(c_G * p_M_p)  
+
+end function 
+
+function kep_puls(r,N) 
+! Keplerian pulsation at radius r 
+!-------
+!Inputs:
+!-------
+! N : integer : size of the grid over r 
+! r(N) : double precision : array of radii from the disk center [m] 
+!-------
+!Output:
+!-------
+!
+! kep_puls : double precision : Keplerian pulsation [s-1] 
+    integer ::  N
+    double precision , dimension(N) :: r
+    double precision , dimension(N) :: kep_puls 
+
+    kep_puls = sqrt(c_G * p_M_p / r**3.0)
+
+end function 
+
+function flux_visc(r, N, omegak, cap_lambda) 
+!Compute the energy flux at photosphere altitute from viscous heating inside the disk
+!-------
+!Inputs: 
+!-------
+!
+! N : integer : size of the grid
+! r(N) : double precision : array of radii from disk center [m]
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+! cap_lambda(N) : double precision : angular momentum factor corresponding to r 
+!
+!--------
+! Output:
+!-------- 
+!
+! flux_visc(N) : energy flux from viscous heating corresponding to r [W]  
+
+    integer :: N 
+    double precision , dimension(N) :: r
+    double precision , dimension(N) :: omegak
+    double precision , dimension(N) :: cap_lambda
+    double precision , dimension(N) :: flux_visc 
+
+    flux_visc = 3.0d0/(8.0d0*c_pi) * cap_lambda/p_L * p_M_dot * omegak**2
+
+end function 
+
+function flux_accretion(r, N, R_c)
+! Compute the energy flux from accretion of gas onto the CPD 
+! It is cut off at r = R_c as for the angular mommentum factor
+!-------
+!Inputs:
+!-------
+!
+! N : integer : size of the grid
+! r(N) : double precision : array of radii from disk center [m]
+! R_c : double precision : Centrifugal radius [m]
+!
+!-------
+!Output: 
+!-------
+!
+! flux_accetion(N) : double precision : energy flux from gas accretion (W)
+
+    integer :: N
+    double precision , dimension(N) :: r 
+    double precision , dimension(N) :: R_c 
+    double precision , dimension(N) :: flux_accretion
+
+    flux_accretion = ((p_Xd * p_Chi * c_G * p_M_p * p_M_dot)/(4.0d0 * c_pi * R_c * R_c * r)) * exp(-r**2/R_c**2)
+
+
+end function 
 
 end module
 
@@ -120,7 +219,7 @@ subroutine Test_fcn ( n, x, res ,iflag )
 end subroutine
 
 
-subroutine Equation_system_ms (n, x, res ,iflag)
+subroutine Equation_system_ms (N, x, res ,iflag)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
 ! photosurface temperature profile along with surface temperature. 
 ! Each residue is named from the original paper equation number, 
@@ -128,13 +227,13 @@ subroutine Equation_system_ms (n, x, res ,iflag)
 ! ----------
 ! Variables:
 ! ----------
-! n : Integer, IN : 
+! N : Integer, IN : 
 !     Size of equation system (=8) 
 !
-! x : double precision, IN/OUT: 
+! x'N) : double precision, IN/OUT: 
 !  vector of [sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s]
 !
-! res : double precision, OUT :
+! res(N) : double precision, OUT :
 !   vector of equation system residue: [res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39]
 !
 ! iflag : integer IN/OUT :
