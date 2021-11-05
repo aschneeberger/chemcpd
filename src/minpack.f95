@@ -1,4 +1,4 @@
-module minipack 
+module MINPACK 
 
  contains
 
