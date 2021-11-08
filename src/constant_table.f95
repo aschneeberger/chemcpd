@@ -43,7 +43,7 @@ implicit none
 !---------------------
 
 ! Dust to gas mass ratio in the PSN at Jupiter's formation location from Heller 2015
-double precision , parameter :: p_Xd = 0.0006 
+double precision , parameter :: p_Xd = 0.006 
 
 ! Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). 
 ! Can be btw 1 and 1.5 (Ruskol 2006)

@@ -14,7 +14,7 @@
 ! that do take into account the luminosity if the central planet.
 
 module DSKPHY
-! Module containing the disqk physics computation, such as mommentum and 
+! Module containing the disk physics computation, such as mommentum and 
 ! Energy flux,  mass conservation computation and radiative trnasfere 
 
 USE PHYCTE
@@ -184,6 +184,48 @@ function flux_accretion(r, N, R_c)
 
 end function 
 
+function flux_planet(r,N,z_s)
+! Compute the energy from the planet the disk received, NOT THE ONE 
+! THE DISK ABSORB ! In case of debuging code convergence, pay attention 
+! to this paramater involving derivative of z_s that depend on T_s
+!-------
+!Inputs:
+!-------
+!
+! N : integer : size of the grid
+! r(N) : double precision : array of radii from disk center [m]
+! z_s(N): double precision : array of the photosphere of the disk 
+!         (def as the altitude where τ = 2/3  )
+!-------
+!Output:
+!-------
+! 
+! flux_planet(N) : double precision : Planet energy flux on the disk. 
+
+    !IN/OUT vars 
+    integer :: N
+    double precision , dimension(N) :: r  !radius 
+    double precision , dimension(N) :: z_s  !altidude 
+    double precision , dimension(N) :: flux_planet !flux 
+
+    !Internal vars 
+    double precision , dimension(N) :: eps , eta    !Disk curvature parameters 
+    double precision , dimension(N) :: dzdr        ! z_s derivative 
+
+    !Central difference derivative of z_s 
+    dzdr(1) = 0.0d0
+    dzdr(2:N-1) = (z_s(1:N-2) - z_s(3:N)) / (r(1:N-2) - r(3:N)) 
+    dzdr(N) = dzdr(N-1)
+
+    !Disk curvature parameters 
+    eps = atan( (4.0d0/(3.0d0*c_pi) * p_R_p) / sqrt( r*r + z_s*z_s ))
+    eta = atan(dzdr) - atan(z_s/r)
+
+    !Planet energy flux on disk 
+    flux_planet = p_L_p * sin(eps * r + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
+
+end function
+
 end module
 
 !--------------------------------------------------------------------------------------------------------
@@ -198,6 +240,14 @@ USE DSKPHY
 IMPLICIT NONE 
 
 CONTAINS 
+
+function fcn_int(x)
+
+    double precision :: x,fcn_int 
+
+    fcn_int = exp(-x*x)
+
+end function 
 
 subroutine Test_fcn ( n, x, res ,iflag )
 ! Test function to test solvers, constructed as stupulated in MINPACK
