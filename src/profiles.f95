@@ -39,7 +39,7 @@ function ang_mom_factor(r, R_c, N)
 ! Output :
 ! -------
 ! 
-! cap_lambda(N): double precision : angular momentum factor 
+! ang_mom_factor(N): double precision : angular momentum factor 
 
     integer :: N
     double precision , dimension(N) ::  cap_lambda 
@@ -172,7 +172,7 @@ function flux_accretion(r, N, R_c)
 !Output: 
 !-------
 !
-! flux_accetion(N) : double precision : energy flux from gas accretion (W)
+! flux_accetion(N) : double precision : energy flux from gas accretion [W]
 
     integer :: N
     double precision , dimension(N) :: r 
@@ -195,7 +195,7 @@ function flux_planet(r,N,z_s)
 ! N : integer : size of the grid
 ! r(N) : double precision : array of radii from disk center [m]
 ! z_s(N): double precision : array of the photosphere of the disk 
-!         (def as the altitude where τ = 2/3  )
+!         (def as the altitude where τ = 2/3  ) [m]
 !-------
 !Output:
 !-------
@@ -226,6 +226,90 @@ function flux_planet(r,N,z_s)
 
 end function
 
+
+function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
+! Compute the disk temperature at the photosphere altitude, defined to at 
+! an optical depth τ=2/3. It is assumed that energy flux come from accretion 
+! heating, viscous heating, planetary luminosity and sourounding PSN temperature. 
+! Taken from Heller 2015 
+!
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
+! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
+! sigma(N) : double precision : Gas surface density [Kg.m-2]
+! f_vis(N) : double precision : Viscous heating power [W] 
+! f_acc(N) : double precision : Accretion heating power [W] 
+! f_planet(N) : double precision : Planet heating power [W] 
+!
+!-------
+!Output:
+!-------
+!
+! temp_surface(N) : double precision : Temperature at photosphere surface [K] 
+
+    !IN/OUT
+    integer :: N
+    double precision , dimension(N) :: kappa_p , beta ! opacity terms 
+    double precision , dimension(N) :: sigma ! surface density 
+    double precision , dimension(N) :: f_vis, f_acc, f_planet ! energy powers 
+    double precision , dimension(N) :: temp_surface  !surface temperature
+
+    !Intermediates 
+    double precision , dimension(N) :: prefactor ! prefactor in equation 
+
+    prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
+
+    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* f_planet) + p_T_neb)**(0.25d0)
+
+end function
+
+function temp_mid_equation(N,kappa_p,beta,kappa_0,cap_lambda,q_s,omegak)
+! Right hand side of equation 31 (or 32 ), midplane temperature can not be isolated, 
+! This function is used in the solving subroutine to find the midplane temperature
+! It is taken from makalkin 2014. It assume that the disk is addiabatique until 
+! optical depth τ=2/3
+! It compute T_m^(5-β) - T_s^(4-β) * T_m
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
+! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
+! kappa_0(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the prefactor [m2.Kg-1]
+! cap_lambda(N) : double precision : Angular mommentum factor Λ 
+! q_s(N) : Mass coordinate of the disk's photosphere. 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+!
+!-------
+!Output:
+!-------
+!
+! temp_mid_equation(N) : double precision : T_m^(5-β) - T_s^(4-β) * T_m value
+
+    !IN/OUT 
+    integer :: N
+    double precision , dimension(N) :: kappa_p , beta , kappa_0 ! mean opacity vars 
+    double precision , dimension(N) :: cap_lambda !angular mommentum factor Λ
+    double precision , dimension(N) :: q_s ! mass coordinate of photosphere 
+    double precision , dimension(N) :: temp_mid_equation  ! midplane temp residual 
+    double precision , dimension(N) :: omegak ! keplerian pulsation
+
+    !Internal vars 
+
+    double precision :: constants ! prefactor composed of all constants 
+    constants = 3.0d0 / (512.0d0 * c_pi*c_pi) * p_mu_gas / (c_sigma_sb * c_Rg * c_gamma)  
+
+    !T_m^(5-β) - T_s^(4-β) * T_m
+    temp_mid_equation = constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
+                        & *(cap_lambda/p_L)**2.0d0 * q_s*q_s
+
+end function 
+
 end module
 
 !--------------------------------------------------------------------------------------------------------
@@ -242,10 +326,26 @@ IMPLICIT NONE
 CONTAINS 
 
 function fcn_int(x)
+! Test function to test integration librairies 
+! It gives a normalized gaussian, with inegration 
+! over infinit domain must equal 1.0 
+!
+!------
+!Input:
+!------
+!
+! x: double precision 
+!
+!-------
+!Output:
+!-------
+!
+!fcn_int : double precision 
+
 
     double precision :: x,fcn_int 
 
-    fcn_int = exp(-x*x)
+    fcn_int = exp(-x*x) / sqrt(c_pi)
 
 end function 
 

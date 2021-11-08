@@ -1,7 +1,7 @@
 module PHYCTE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Physical constant table, all constant 
-! names are preceeded by c_ 
+! names MUST be preceeded by c_ 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 implicit none
@@ -23,15 +23,16 @@ double precision , parameter :: c_au = 149597870700.0 ! Astronomical unit [m]
 double precision , parameter :: c_G = 6.6743d-11    ! Gravitational constant [m3.Kg-1.s-1] 
 
 !Other sources 
-double precision, parameter :: c_gamma = 1.45  ! Addiabatique compression factor for perfect gas
-double precision , parameter :: c_pi = 4.0d0 * atan(1.0d0)
+double precision, parameter :: c_gamma = 1.45               ! Addiabatique compression factor for perfect gas
+double precision , parameter :: c_pi = 4.0d0 * atan(1.0d0)  ! π = atan(1)
+double precision , parameter :: c_Rg = 8.314462618          ! Perfect gas constant
 
 end module 
 
 module MODCTE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Model input parameters, all parameters
-! names are preceeded by p_ 
+! names MUST be preceeded by p_ 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 USE PHYCTE
