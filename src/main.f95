@@ -1,32 +1,46 @@
 
+function fcn_int(x)
+
+    double precision :: x,f 
+
+    f = exp(-x*x)
+
+end function 
+
+
 PROGRAM CHEMCPD 
 
 USE RESIDUES
 USE MINPACK
 USE MODCTE
 USE DSKPHY
+USE QUADPACK
+
 
 integer , parameter :: n = 5
 real(8) , dimension(2) ::  x0, fvec
 real(8) :: tol 
 integer :: info 
-double precision , dimension(n) :: r,b
+double precision , dimension(n) :: r
 double precision :: R_c
 
-x0(1) = -1.0 
-x0(2) = -3.0 
+double precision ::  epsabs = 1.0d-3,epsrel=1.0d-6
+integer :: key = 1
+double precision :: a = -20.0d0 ,b = +20.0d0
 
-r = [1.0,2.0,6.0,10.0,30.0] * c_R_jup
+double precision :: results 
+double precision ::  abserr
+integer  :: neval,ier
 
-R_c = centrifugal_radius()
+
+
+call QAG(fcn_int,a,b,epsabs,epsrel,jey,results,abserr,neval,ier)
 
 
 call hybrd1 (Test_fcn, 2, x0, fvec, tol, info)
 
-write(*,*) "solution ", x0
-
-write(*,*) "residue ", fvec 
-
-write(*,*) c_pi
+write(*,*) 
+write(*,*) results
 
 END PROGRAM
+
