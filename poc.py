@@ -7,7 +7,6 @@ this algorithm
 from math import inf
 import numpy as np
 from numpy.core.numeric import full
-from numpy.typing import _256Bit 
 import scipy.optimize as opt 
 import scipy.integrate as  int
 import astropy.constants as cte
@@ -19,6 +18,8 @@ import scipy as sc
 ###################################################################################
 #------------------------------- Constant table ----------------------------------#
 ###################################################################################
+
+NITERATIONS = 0
 
 dict_cte = {} # Dictionary initialisation of all contants value in the temperature determination. 
 
@@ -35,7 +36,7 @@ alpha = 1e-3 # Alpha tubulence from shakura and sunyaev
 gamma = 1.42 # addiabatic compression facteor of Perfect Gas
 temp_neb = 100 # PSN temperature at 5 AU [K]
 
-Nr = 1000 # Number of points in the grid 
+Nr = 5000 # Number of points in the grid 
 
 # precomputed model data of Mordasini 2013 taken from the graphs of Heller 2015
 
@@ -55,7 +56,7 @@ Mdot_high = 4e-6 * M_earth/year     # Later accretion rate after 1Myr
 Mdot = Mdot_high 
 
 R_p_pic_accretion = 10 * cte.R_jup.value # Jupiter's radius at pic accretion runaway 
-R_p_high = 1.4 * cte.R_jup.value # Jupiter's radius after pic accretion at t = 1Myrs 
+R_p_high = 1.4 i cte.R_jup.value # Jupiter's radius after pic accretion at t = 1Myrs 
 
 R_p = R_p_high
 
@@ -261,7 +262,8 @@ def Residue(X,dict_cte,N) :
     Compute the equation system vector residues F[X] 
     The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table from makalkin et al 1995
     """
-
+	
+    global NITERATIONS 
 
     #Values from the previous iteration 
     dict_var = Parse_solution(X,N)
@@ -338,7 +340,9 @@ def Residue(X,dict_cte,N) :
     # return all residues as single vector of size 8*Nr
 
     res_vec = np.concatenate( (res_10/dict_cte['Mdot'],res_17/10,res_23,res_24/1e3,res_31/10,res_36,res_37/cte.R_jup.value,res_39/1e5) )
-
+    
+    if NITERATIONS % 100 == 0 :
+	np.save('~/Results/iteration_'+str(NITERATIONS),X)
     # plt.loglog(dict_cte['r'],dict_var['T_s'])
     # plt.loglog(dict_cte['r'],res_17)
     # plt.pause(0.1)
@@ -457,7 +461,7 @@ sol = opt.least_squares(Residue,X0,args=(dict_cte,Nr),method='trf',bounds=(Xlow,
 dict_sol = Parse_solution(sol.x,Nr)
 
 print(sol.message)
-np.save("solution.npy",sol.x)
+np.save("solution_we.npy",sol.x)
 
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_mid'],label='midplane')
 plt.plot(dict_cte['r']/cte.R_jup.value,dict_sol['T_s'],label='surface')
@@ -467,5 +471,5 @@ plt.xlabel('radius [$R_{jup}$]')
 plt.ylabel('temperature (K)')
 plt.xscale('log')
 plt.yscale('log')
-plt.savefig('Temps.png',dpi=300)
+plt.savefig('Temps_we.png',dpi=300)
 plt.close()
