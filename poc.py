@@ -288,7 +288,7 @@ def Residue(X,dict_cte,N) :
     c_s = np.sqrt(dict_cte['gamma'] * 8.314 * dict_var['T_mid'] / dict_cte['mu_gas']) # mid plane sound speed 
     h = c_s / dict_cte['omegak'] # disk scale height
 
-    res_23 = dict_var['rho_add'] - dict_var['rho_s'] * np.exp( dict_cte['gamma']/2.0 * (dict_var['z_s'] - dict_var['z_add']) / h )
+    res_23 = dict_var['rho_add'] - dict_var['rho_s'] * np.exp( dict_cte['gamma']/2.0 * (dict_var['z_s']**2 - dict_var['z_add']**2) / h**2 )
 
     #Eq 24: At z=z_s the optical depth is 2/3
 
