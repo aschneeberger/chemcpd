@@ -14,15 +14,21 @@
 ! that do take into account the luminosity if the central planet.
 
 module DSKPHY
-! Module containing the disk physics computation, such as mommentum and 
-! Energy flux,  mass conservation computation and radiative trnasfere 
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Module containing the disk physics computation, such as mommentum and !
+! Energy flux,  mass conservation computation and radiative trnasfere   !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 USE PHYCTE
 USE MODCTE
 
 implicit none 
 
 contains 
+
+!---------------------------------------------------!
+! Intrasec disk properties (computed only one time) !
+!---------------------------------------------------!
+
 
 function ang_mom_factor(r, R_c, N) 
 ! Function that compute the angular momentum factor Λ. 
@@ -41,6 +47,7 @@ function ang_mom_factor(r, R_c, N)
 ! 
 ! ang_mom_factor(N): double precision : angular momentum factor 
 
+    !IN/OUT
     integer :: N
     double precision , dimension(N) ::  cap_lambda 
     double precision , dimension(N) :: r 
@@ -77,6 +84,7 @@ function spe_ang_mom()
 ! 
 ! spe_ang_mom : double precision , specific angular momentum [m2.s-1]
 
+    !IN/OUT
     double precision ::  spe_ang_mom 
 
     if (p_M_p .lt. c_M_jup) then 
@@ -102,6 +110,7 @@ function centrifugal_radius()
 !
 ! centrifugal_radius : double precision : centrifugal radius (radius at witch Fgrav = Fcentrifuge) [m]  
 
+    !IN/OUT
     double precision  :: centrifugal_radius 
     double precision  :: J ! Special angular momentum 
     
@@ -122,6 +131,8 @@ function kep_puls(r,N)
 !-------
 !
 ! kep_puls : double precision : Keplerian pulsation [s-1] 
+    
+    !IN/OUT
     integer ::  N
     double precision , dimension(N) :: r
     double precision , dimension(N) :: kep_puls 
@@ -129,6 +140,8 @@ function kep_puls(r,N)
     kep_puls = sqrt(c_G * p_M_p / r**3.0)
 
 end function 
+
+
 
 function flux_visc(r, N, omegak, cap_lambda) 
 !Compute the energy flux at photosphere altitute from viscous heating inside the disk
@@ -147,6 +160,7 @@ function flux_visc(r, N, omegak, cap_lambda)
 !
 ! flux_visc(N) : energy flux from viscous heating corresponding to r [W]  
 
+    !IN/OUT
     integer :: N 
     double precision , dimension(N) :: r
     double precision , dimension(N) :: omegak
@@ -174,6 +188,7 @@ function flux_accretion(r, N, R_c)
 !
 ! flux_accetion(N) : double precision : energy flux from gas accretion [W]
 
+    !IN/OUT
     integer :: N
     double precision , dimension(N) :: r 
     double precision , dimension(N) :: R_c 
@@ -183,6 +198,14 @@ function flux_accretion(r, N, R_c)
 
 
 end function 
+
+
+
+!-----------------------------------------------------------------! 
+! Properties depending on temperature used in the equation system !
+!-----------------------------------------------------------------!
+
+
 
 function flux_planet(r,N,z_s)
 ! Compute the energy from the planet the disk received, NOT THE ONE 
@@ -227,6 +250,42 @@ function flux_planet(r,N,z_s)
 end function
 
 
+function gas_scale_height(N,Temp,omegak)
+! Compute the gas scale height above the altitude where the  
+! The temperature is taken.
+!-------
+!Inputs:
+!-------
+!
+! N : integer : size of the grid
+! Temp(N) : double precision : Temperature 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+!
+!-------
+!Output:
+!-------
+!
+! gas_scale_height(N) : double precision : gas scale height [m] 
+
+    integer :: N 
+    double precision , dimension(N) :: Temp
+    double precision , dimension(N) :: omegak  
+    double precision , dimension(N) :: gas_scale_height
+
+    !internal vars 
+    double precision , dimension(N) :: c_s ! sound speed 
+
+    c_s = sqrt( Temp * c_gamma * c_Rg / p_mu_gas )
+
+    gas_scale_height = c_s/omegak 
+
+end function 
+
+!----------------------------------! 
+!  Equations of the system itself  !
+!----------------------------------!
+
+
 function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
 ! Compute the disk temperature at the photosphere altitude, defined to at 
 ! an optical depth τ=2/3. It is assumed that energy flux come from accretion 
@@ -258,7 +317,7 @@ function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
     double precision , dimension(N) :: f_vis, f_acc, f_planet ! energy powers 
     double precision , dimension(N) :: temp_surface  !surface temperature
 
-    !Intermediates 
+    !Internal 
     double precision , dimension(N) :: prefactor ! prefactor in equation 
 
     prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
@@ -300,13 +359,152 @@ function temp_mid_equation(N,kappa_p,beta,kappa_0,cap_lambda,q_s,omegak)
     double precision , dimension(N) :: omegak ! keplerian pulsation
 
     !Internal vars 
-
     double precision :: constants ! prefactor composed of all constants 
     constants = 3.0d0 / (512.0d0 * c_pi*c_pi) * p_mu_gas / (c_sigma_sb * c_Rg * c_gamma)  
 
     !T_m^(5-β) - T_s^(4-β) * T_m
     temp_mid_equation = constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
                         & *(cap_lambda/p_L)**2.0d0 * q_s*q_s
+
+end function 
+
+function accretion_rate(N,sigma,T_m,omegak,cap_lambda) 
+! Compute the accretion rate from the temperature, function used in the 
+! résolution of the equation system, its value must match the parameter p_M_dot
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! sigma(N) : double precision : Gas surface density [Kg.m-2]
+! T_m(N) : double precision : midplane temperature [K] 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+! cap_lambda(N) : double precision : Angular mommentum factor Λ 
+!
+!-------
+!Output:
+!-------
+!
+! accretion_rate(N) : double precision : The accretion rate [Kg.s-1]  
+
+    !IN/OUt 
+    integer :: N 
+    double precision , dimension(N) :: sigma
+    double precision , dimension(N) :: T_m
+    double precision , dimension(N) :: omegak 
+    double precision , dimension(N) :: cap_lambda 
+    double precision , dimension(N) :: accretion_rate
+
+    !Internal vars 
+    double precision :: constants ! prefactor with all constants in it 
+    
+    constants = (3.0 * c_pi * c_gamma * c_Rg * p_alpha * p_L) / p_mu_gas 
+
+    accretion_rate = (constants * sigma * T_m) / (omegak * cap_lambda) 
+
+end function
+
+function rho_add_23(N,rho_s,z_s,z_add,T_s,omegak) 
+! In the equation set there are two independent method to compute the 
+! gas density at the altitude of transition between addiabatique and 
+! isothermal part of the disk. The first is from equation 23 of makalkin 
+! 1995, using the pressure in an isothermal fluid
+!------
+!Input:
+!------
+! N : integer : size of the grid
+! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
+! z_s(N) : double precision : altitude of the photosphere [m] 
+! z_add(N) : double precision : altitude of the addiabatique to isothermal transition [m]
+! T_s(N) : double precision : Temperature at photosphere surface [K] 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+!
+!-------
+!Output:
+!-------
+!
+! rho_add_23(N) : double precision : gas density at addiabatique to isothermal transition
+!                                   from eq 23 
+
+    !IN/OUT
+    integer :: N 
+    double precision , dimension(N) :: rho_s 
+    double precision , dimension(N) :: z_s  
+    double precision , dimension(N) :: z_add  
+    double precision , dimension(N) :: rho_add_23
+    double precision , dimension(N) :: T_s
+    
+    ! Internal vars 
+    double precision , dimension(N) :: h_s 
+
+    h_s = gas_scale_height(N,T_s,omegak)
+
+    rho_add_23 = rho_s * exp( (c_gamma / 2.0d0) * ( z_s*z_s - z_add*z_add ) / (h_s*h_s) )
+
+end function 
+
+function rho_add_36(N,rho_mid,T_s,T_mid) 
+! In the equation set there are two independent method to compute the 
+! gas density at the altitude of transition between addiabatique and 
+! isothermal part of the disk. The second is from equation 36 of makalkin 
+! 1995, using the pressure in an addiabatique fluid
+!------
+!Input:
+!------
+! N : integer : size of the grid
+! rho_mid(N) : double precision : midplane gas density [Kg.m-3] 
+! T_s(N) : double precision : photosphere temperature [K] 
+! T_mid(N) : double precision : midplane temperature 
+!
+!-------
+!Output:
+!-------
+!
+! rho_add_36(N) : double precision : gas density at addiabatique to isothermal transition
+!                                    from eq 36
+
+    !IN/OUT 
+    integer :: N
+    double precision , dimension(N) :: rho_mid
+    double precision , dimension(N) :: T_s
+    double precision , dimension(N) :: T_mid 
+    double precision , dimension(N) :: rho_add_36 
+
+    rho_add_36 = rho_mid * (T_s / T_mid) ** ( 1.0d0/(c_gamma -1.0d0 ) )
+
+end function 
+
+function addiabatique_height(N,T_mid,T_s,omegak) 
+!Compute the altitude of the addiabatique to isothermal zone in the 
+! disk. Taken from eq 37 in makalkin 1995. 
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! T_mid(N) : double precision : midplane temperature [K)
+! T_s(N) : double precision : photosphere temperature [K] 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+!
+!-------
+!Output:
+!-------
+!
+! addiabatique_height(N) : double precision :  altitude of the addiabatique to isothermal zone [m]
+
+    !IN/OUT
+    integer :: N
+    double precision , dimension(N) :: T_mid  
+    double precision , dimension(N) :: T_s  
+    double precision , dimension(N) :: omegak  
+    double precision , dimension(N) :: addiabatique_height
+
+    !internal vars
+    double precision :: constants !  Prefactor made of all the constants 
+
+    consants = sqrt( ( 2.0d0 * c_gamma) / ( c_gamma -1.0d0 ) * c_Rg / p_mu_gas  )
+
+    addiabatique_height = constants * sqrt( T_mid - T_s ) / omegak
 
 end function 
 

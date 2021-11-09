@@ -9,5 +9,4 @@ The model will proceed in three steps:
 Each step can be precomputed independantly from the others 
 
 Currently the model is tested with the python file `poc.py` and its test unit tests `test_poc.py` 
-
-$`a^2+b^2=\frac{1}{c}`$.
+$ \int_{-\inf}^{+\inf} x^2 dx $ 

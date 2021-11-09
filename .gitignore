@@ -6,3 +6,5 @@
 *.exe
 *.mod
 *.out
+*.png 
+*.npy
