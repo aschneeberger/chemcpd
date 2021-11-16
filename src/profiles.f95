@@ -20,6 +20,7 @@ module DSKPHY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 USE PHYCTE
 USE MODCTE
+USE QUADPACK
 
 implicit none 
 
@@ -433,6 +434,7 @@ function rho_add_23(N,rho_s,z_s,z_add,T_s,omegak)
     double precision , dimension(N) :: z_add  
     double precision , dimension(N) :: rho_add_23
     double precision , dimension(N) :: T_s
+    double precision , dimension(N) :: omegak
     
     ! Internal vars 
     double precision , dimension(N) :: h_s 
@@ -502,11 +504,157 @@ function addiabatique_height(N,T_mid,T_s,omegak)
     !internal vars
     double precision :: constants !  Prefactor made of all the constants 
 
-    consants = sqrt( ( 2.0d0 * c_gamma) / ( c_gamma -1.0d0 ) * c_Rg / p_mu_gas  )
+    constants = sqrt( ( 2.0d0 * c_gamma) / ( c_gamma -1.0d0 ) * c_Rg / p_mu_gas  )
 
     addiabatique_height = constants * sqrt( T_mid - T_s ) / omegak
 
 end function 
+
+function optical_depth(N,rho_s,kappa_p,z_s,omegak,T_s) 
+! Compute the optical depth at the photophere altitude, it must be 
+! equal to 2/3, it is taken from eq 24 from makalkin 1995. It assume
+! that we are in the isothermal part of the disk
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
+! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
+! z_s(N) : double precision : altitude of the photosphere [m] 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+! T_s(N) : double precision : Temperature at photosphere surface [K] 
+!
+!-------
+!Output:
+!-------
+!
+! optical_depth(N) : double precision : Opticla depth [dimensionless]
+
+    !IN/OUT 
+    integer :: N 
+    double precision , dimension(N) :: rho_s 
+    double precision , dimension(N) :: kappa_p 
+    double precision , dimension(N) :: z_s
+    double precision , dimension(N) :: omegak 
+    double precision , dimension(N) :: T_s 
+    double precision , dimension(N) :: optical_depth 
+
+    !INTERNAL VARS 
+ 
+    double precision , dimension(N) :: b_s ! dimensionless integration factor  
+    double precision , dimension(N) :: sqrt_b_s ! dimensionless integration factor sqrt (to optimize)  
+    
+    b_s = 0.5d0 * (p_mu_gas / c_Rg ) * (omegak *omegak * z_s *z_s) / T_s  
+    sqrt_b_s = sqrt(b_s)
+
+    optical_depth = kappa_p * rho_s *z_s * exp(b_s)/sqrt_b_s * ( 1 - erf(sqrt_b_s) ) ! equation 24 reduced   
+end function 
+
+function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak) 
+! Compute the surface density of gas from density in the addiabatique zone 
+! and density in isothermal zone. It is taken from equation 39 in makalkin
+! 1995.
+!------
+!Input:
+!------
+!
+! N : integer : size of the grid
+! z_add(N) : double precision : altitude of the addiabatique to isothermal transition [m]
+! rho_add(N) : double precision : gas density at addiabatique to isothermal transition [Kg.m-3] 
+! z_s(N) : double precision : altitude of the photosphere [m] 
+! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
+! T_s(N) : double precision : Temperature at photosphere surface [K] 
+! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
+!
+!-------
+!Output:
+!-------
+!
+! surface_density(N) : double precision : surface density of gas [Kg.m-2]
+
+    !IN/OUT 
+    integer :: N
+    double precision , dimension(N) :: z_add 
+    double precision , dimension(N) :: rho_add
+    double precision , dimension(N) :: z_s 
+    double precision , dimension(N) :: rho_s 
+    double precision , dimension(N) :: T_s
+    double precision , dimension(N) :: omegak
+    double precision , dimension(N) :: surface_density
+
+    !INTERNAL VARS 
+    !Intermediates computations vars 
+    double precision , dimension(N) :: b_a  ! in addiabatique section of integral
+    double precision , dimension(N) :: b_s  ! in isothermal section of integral
+    double precision , dimension(N) :: integration_add ! addiabatique section integral results array 
+    double precision , dimension(N) :: integration_s ! isothermal section integral results array 
+    double precision , dimension(N) :: zeta_a       ! isothermal integral lower bound (z_s/z_add)
+    integer :: i
+
+    !integration subroutine 
+    !inputs 
+    double precision :: a = 0.0d0, b=1.0d0 ! integration borders 
+    double precision :: epsabs=1.0d-3 , epsrel=1.0e-8 ! absolute and relative deisred integration errors 
+    integer :: key = 1 ! api communication with qag, 1 is set for 7 gauss points, 15 Gauss-Kronrod points,
+    !outputs 
+    double precision :: result ! integration results 
+    double precision :: abserr ! integration  absolute error 
+    integer :: neval ! number of evaluation of function to integrate 
+    integer :: ier ! return code should be 0 for successful integration 
+    
+    b_a = 0.5 * p_mu_gas/c_Rg * (omegak*omegak * z_add*z_add) / (T_s*T_s)
+    b_s = 0.5 * p_mu_gas/c_Rg * (omegak*omegak * z_s*z_s) / (T_s*T_s)
+
+    ! Loop integrating the function addiabatique_density from 0 to 1 on all grid points 
+    do i=1 , N 
+        ! do integration 
+        call qag(addiabatique_density,a,b,epsabs,epsrel,key,result,abserr,neval,ier,b_a(i))
+        ! store result in array 
+        integration_add(i) = result
+    end do
+
+    zeta_a = z_add/z_s 
+
+    ! analitical integral results in isotherm 
+
+    integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
+
+    surface_density = 2.0d0 * z_add * rho_add * integration_add + 2.0d0 * z_s * rho_s * integration_s
+
+end function  
+
+function addiabatique_density(zeta , b_a)
+! Function to integrate to compute the gas mass in addiabatique zone
+! depends on the parameter b_a that change with radius
+!------
+!Input:
+!------
+!
+! zeta : double precision : integration variable, provided by quadpack   
+! b_a : double precision :  constant parameter throughout the integration 
+!
+!-------
+!Output:
+!-------
+!
+! addiabatique_density : double precision 
+
+    !IN/OUT
+    double precision :: zeta 
+    double precision :: b_a 
+    double precision :: addiabatique_density 
+
+    !Internal 
+    double precision :: power ! power factor 
+    double precision :: prefac ! prefactor 
+
+    power = 1.0d0 / (c_gamma -1)
+    prefac = (c_gamma -1.0d0) / c_gamma * b_a
+
+    addiabatique_density = (1 + prefac*(1-zeta*zeta))**(power)
+
+end function
 
 end module
 
@@ -523,7 +671,7 @@ IMPLICIT NONE
 
 CONTAINS 
 
-function fcn_int(x)
+function fcn_int(x,param)
 ! Test function to test integration librairies 
 ! It gives a normalized gaussian, with inegration 
 ! over infinit domain must equal 1.0 
@@ -533,6 +681,7 @@ function fcn_int(x)
 !------
 !
 ! x: double precision 
+! param : double precision 
 !
 !-------
 !Output:
@@ -542,8 +691,9 @@ function fcn_int(x)
 
 
     double precision :: x,fcn_int 
+    double precision :: param
 
-    fcn_int = exp(-x*x) / sqrt(c_pi)
+    fcn_int = param * exp(-x*x) / sqrt(c_pi)
 
 end function 
 

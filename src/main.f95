@@ -26,7 +26,7 @@ double precision :: R_c
 
 double precision ::  epsabs = 1.0d-3,epsrel=1.0d-6
 integer :: key = 1
-double precision :: a = -500.0d0 ,b = +500.0d0
+double precision :: a = -100.0d0 ,b = +100.0d0
 
 double precision :: results 
 double precision ::  abserr
@@ -34,13 +34,13 @@ integer  :: neval,ier
 
 x0 = [1.0d0,1.0d0]
 
-call QAG(fcn_int,a,b,epsabs,epsrel,jey,results,abserr,neval,ier)
+call QAG(fcn_int,a,b,epsabs,epsrel,jey,results,abserr,neval,ier,5.0d0)
 
 
 call hybrd1 (Test_fcn, 2, x0, fvec, tol, info)
 
 write(*,*) 
-write(*,*) temp_mid_equation(2,x0,x0,x0,x0,x0,kep_puls([1.0,2.0] * c_R_jup,2))
+write(*,*) results
 
 END PROGRAM
 
