@@ -1,7 +1,7 @@
 all: chemcpd.exe
 
-chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o profiles.o  
-	gfortran  main.f95 quadpack.o minpack.o constant_table.o profiles.o  -o chemcpd.exe 
+chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o profiles.o particular_functions.o  
+	gfortran  main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
 	make clean
 
 .PHONY : clean
@@ -17,6 +17,9 @@ profiles.o : profiles.f95
 
 constant_table.o : constant_table.f95 
 	gfortran -c constant_table.f95
+
+particular_functions.o : particular_functions.f95
+	gfortran -c particular_functions.f95
 
 clean : 
 	rm *.o *.mod 

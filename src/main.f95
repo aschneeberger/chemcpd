@@ -15,6 +15,7 @@ USE MINPACK
 USE MODCTE
 USE DSKPHY
 USE QUADPACK
+USE PARTFUN
 
 
 integer , parameter :: n = 5
@@ -39,8 +40,8 @@ call QAG(fcn_int,a,b,epsabs,epsrel,jey,results,abserr,neval,ier,5.0d0)
 
 call hybrd1 (Test_fcn, 2, x0, fvec, tol, info)
 
-write(*,*) 
-write(*,*) results
+write(*,*) derfi(0.2d0)
+
 
 END PROGRAM
 

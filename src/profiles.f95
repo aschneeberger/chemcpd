@@ -13,6 +13,40 @@
 ! To solve the problem we use an initial set of guess derived from the model of Anderson et al 2021
 ! that do take into account the luminosity if the central planet.
 
+MODULE OPACITY
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Module computing disk opacity depending on temperature and density  !
+! Is isolated in a particular module to allow opcity complexification !
+! Without complicting with DSKPHY variables                           !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+USE MODCTE
+
+implicit none
+
+contains
+subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
+
+    !IN/OUT
+    integer , intent(in) :: N 
+    double precision , intent(in) , dimension(N) :: Temp 
+    double precision , intent(out) , dimension(N) :: beta 
+    double precision , intent(out) , dimension(N) :: kappa_0 
+    double precision , intent(out) , dimension(N) :: kappa_p
+
+    !INTERNALS
+    integer :: i
+
+    forall (i = 1:N) kappa_0(i) = 0.1/10.0d0 
+    forall (i = 1:N) beta(i) = 0.5 
+    forall (i = 1:N) kappa_p(i) = 0.1 * p_Chi * Temp(i)**0.5 / 10.0d0
+
+end subroutine
+
+END MODULE 
+
+!--------------------------------------------------------------------------------------------------------
+
 module DSKPHY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Module containing the disk physics computation, such as mommentum and !
@@ -21,6 +55,7 @@ module DSKPHY
 USE PHYCTE
 USE MODCTE
 USE QUADPACK
+USE OPACITY
 
 implicit none 
 
@@ -31,7 +66,7 @@ contains
 !---------------------------------------------------!
 
 
-function ang_mom_factor(r, R_c, N) 
+function ang_mom_factor(N,r, R_c) 
 ! Function that compute the angular momentum factor Λ. 
 ! following equation 2 and 3 from Makalkin et al 2014. 
 ! -------
@@ -50,7 +85,6 @@ function ang_mom_factor(r, R_c, N)
 
     !IN/OUT
     integer :: N
-    double precision , dimension(N) ::  cap_lambda 
     double precision , dimension(N) :: r 
     double precision :: R_c 
     double precision , dimension(N) :: ang_mom_factor 
@@ -59,12 +93,12 @@ function ang_mom_factor(r, R_c, N)
 
     ! Closer than R_c, the gas infall from the PSN contribute to the total CPD angular momentum
     where (r .lt. R_c) 
-        cap_lambda =  1 - 1/5 * (r/R_c)**2 - sqrt(p_R_p/r) - 4/5 * sqrt(R_c/p_R_disk) + 4/5 * sqrt((p_R_p*R_c)/(p_R_disk * r)) &
+        ang_mom_factor =  1 - 1/5 * (r/R_c)**2 - sqrt(p_R_p/r) - 4/5 * sqrt(R_c/p_R_disk) + 4/5 * sqrt((p_R_p*R_c)/(p_R_disk * r)) &
                     & + 0.2 * sqrt(p_R_p/p_R_disk) * (r/R_c)**2 
     
     ! Further than R_c, the gas drift outward and there is no more infall 
     elsewhere  
-        cap_lambda = 0.8 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8*sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
+        ang_mom_factor = 0.8 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8*sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
    
     end where 
 
@@ -120,7 +154,7 @@ function centrifugal_radius()
 
 end function 
 
-function kep_puls(r,N) 
+function kep_puls(N,r) 
 ! Keplerian pulsation at radius r 
 !-------
 !Inputs:
@@ -144,7 +178,7 @@ end function
 
 
 
-function flux_visc(r, N, omegak, cap_lambda) 
+function flux_visc(N, r, omegak, cap_lambda) 
 !Compute the energy flux at photosphere altitute from viscous heating inside the disk
 !-------
 !Inputs: 
@@ -172,7 +206,7 @@ function flux_visc(r, N, omegak, cap_lambda)
 
 end function 
 
-function flux_accretion(r, N, R_c)
+function flux_accretion(N, r, R_c)
 ! Compute the energy flux from accretion of gas onto the CPD 
 ! It is cut off at r = R_c as for the angular mommentum factor
 !-------
@@ -192,7 +226,7 @@ function flux_accretion(r, N, R_c)
     !IN/OUT
     integer :: N
     double precision , dimension(N) :: r 
-    double precision , dimension(N) :: R_c 
+    double precision :: R_c 
     double precision , dimension(N) :: flux_accretion
 
     flux_accretion = ((p_Xd * p_Chi * c_G * p_M_p * p_M_dot)/(4.0d0 * c_pi * R_c * R_c * r)) * exp(-r**2/R_c**2)
@@ -285,6 +319,21 @@ end function
 !----------------------------------! 
 !  Equations of the system itself  !
 !----------------------------------!
+! The Equation system is derived from makalkin 1995,2014 and Heller 2015 
+! They solve the surface and midplane temperature profile of the circum planetary disk 
+! in the case of an addiabatique disk, with the photosurface being in an isothermal layer
+! The photosphere is defined as the area where the optical depth τ = 2/3. 
+! There are 8 equations to solve with 8 unknowns: 
+!     Σ: the surface density 
+!     ρm: mid-plane density 
+!     ρs: photosphere density
+!     ρa: addiabatique to isotherme frontier density
+!     Tm: mid-plane temperature
+!     Ts: photosphere temperature
+!     zs: photosphere height from the mid-plane
+!     za: addiabatique to isotherm frontier height from the mid-plane 
+!
+! The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table
 
 
 function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
@@ -614,14 +663,17 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
         integration_add(i) = result
     end do
 
+    ! analitical integral results in isotherm
     zeta_a = z_add/z_s 
-
-    ! analitical integral results in isotherm 
+    !check if z_add > z_s to proceed, avoiding unphysical results 
+    if (All(z_add < z_s)) then 
+        write(*,*) "WARNING : Unphysical situation, z_addiabatique > z_surface"
+    end if 
 
     integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
 
+    ! final surface density 
     surface_density = 2.0d0 * z_add * rho_add * integration_add + 2.0d0 * z_s * rho_s * integration_s
-
 end function  
 
 function addiabatique_density(zeta , b_a)
@@ -655,6 +707,111 @@ function addiabatique_density(zeta , b_a)
     addiabatique_density = (1 + prefac*(1-zeta*zeta))**(power)
 
 end function
+
+
+!---------------------------------------------------------!
+!       INITIALIZATION AND INITIAL GUESSES SUBROUTINE     ! 
+!---------------------------------------------------------! 
+! This part of the module is dedicated to initialize variables and find initial guesses to solve equations systems 
+! Different guesses prescription are implemented : 
+!   - Anderson et al 2020
+!   - Makalkin et al 1995 analytical solution in pure addiabatique 
+!   - Aguichine et al 2020 guesses adaptated to a circum planetary disk
+! The user is free choose guesses that gives the better results  
+
+
+subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
+
+    !IN/OUT
+    integer , intent(in) :: N 
+    double precision , intent(out) :: R_c
+    double precision , intent(in) , dimension(N) :: r
+    double precision , intent(out) , dimension(N) :: cap_lambda
+    double precision , intent(out) , dimension(N) :: omegak
+    double precision , intent(out) , dimension(N) :: F_vis
+    double precision , intent(out) , dimension(N) :: F_acc 
+    double precision , intent(out) , dimension(N) :: T_mid
+    double precision , intent(out) , dimension(N) :: T_s
+    double precision , intent(out) , dimension(N) :: rho_mid
+    double precision , intent(out) , dimension(N) :: rho_add
+    double precision , intent(out) , dimension(N) :: rho_s
+    double precision , intent(out) , dimension(N) :: z_add
+    double precision , intent(out) , dimension(N) :: z_s
+    double precision , intent(out) , dimension(N) :: sigma
+
+    !INTERNAL VARS 
+
+    ! Parameters constant with temperature, initialised
+    R_c = centrifugal_radius()
+
+    cap_lambda = ang_mom_factor(N,r,R_c)
+
+    omegak = kep_puls(N,r)
+
+    F_vis = flux_visc(N,r,omegak,cap_lambda)
+
+    F_acc = flux_accretion(N,r,R_c)
+
+    ! Real first guesses 
+
+
+
+end subroutine
+
+subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
+    
+    !IN/OUT
+    integer , intent(in) :: N 
+    double precision , intent(in) , dimension(N) :: r
+    double precision , intent(in) , dimension(N) :: cap_lambda
+    double precision , intent(in) , dimension(N) :: omegak
+    double precision , intent(in) , dimension(N) :: F_vis
+    double precision , intent(in) , dimension(N) :: F_acc 
+    double precision , intent(out) , dimension(N) :: T_mid
+    double precision , intent(out) , dimension(N) :: T_s
+    double precision , intent(out) , dimension(N) :: rho_mid
+    double precision , intent(out) , dimension(N) :: rho_add
+    double precision , intent(out) , dimension(N) :: rho_s
+    double precision , intent(out) , dimension(N) :: z_add
+    double precision , intent(out) , dimension(N) :: z_s
+    double precision , intent(out) , dimension(N) :: sigma
+
+    !INTERNAL VARS 
+
+    double precision , dimension(N) :: c_s ! mid plane sound speed 
+    double precision , dimension(N) :: h ! gas scale height 
+    double precision , dimension(N) :: mu ! dynamical viscosity 
+    double precision :: power ! factor in a power 
+
+    !opacity subroutine 
+    double precision , dimension(N) :: beta 
+    double precision , dimension(N) :: kappa_0 
+    double precision , dimension(N) :: kappa_p
+
+    ! From equation 4 of anderson et al 2021 
+    T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + p_T_neb**4.0d0)**0.25
+    T_s = T_mid / 5.0d0
+
+    c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
+    h = c_s/omegak
+    mu = p_alpha * c_s * c_s / omegak
+
+    !From steady state radial equation 
+    sigma = p_M_dot * cap_lambda /(3.0d0 * c_PI * mu) 
+
+    !Approximating the density ρ(r,z) profile on z as a gaussian one
+    rho_mid = sqrt( 2.0d0/c_PI) * sigma/(2.0d0*h)
+
+    !One can find ρ_add from eq 36 in makalakin 1995
+    power  = 1.0d0 / (c_gamma -1.0d0)
+    rho_add = rho_mid * (T_s/T_mid) ** (power)
+
+    !Approximation de z_s from the gas scale height from heller 2015
+    call opacity_table(N, T_s, beta, kappa_0, kappa_p) ! use opacity at surface temperature
+
+     
+
+end subroutine 
 
 end module
 
