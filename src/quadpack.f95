@@ -199,7 +199,7 @@ subroutine aaaa
 !
   return
 end subroutine
-subroutine qag ( f, a, b, epsabs, epsrel, key, result, abserr, neval, ier )
+subroutine qag ( f, a, b, epsabs, epsrel, key, result, abserr, neval, ier,param )
 
 !*****************************************************************************80
 !
@@ -282,7 +282,7 @@ subroutine qag ( f, a, b, epsabs, epsrel, key, result, abserr, neval, ier )
 !
   implicit none
 
-  integer, parameter :: limit = 500
+  integer, parameter :: limit = 1000
 
   double precision a
   double precision abserr
@@ -300,14 +300,15 @@ subroutine qag ( f, a, b, epsabs, epsrel, key, result, abserr, neval, ier )
   integer neval
   double precision result
   double precision rlist(limit)
+  double precision param
 
   call qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
-    ier, alist, blist, rlist, elist, iord, last )
+    ier, alist, blist, rlist, elist, iord, last, param )
 
   return
 end subroutine
 subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
-  ier, alist, blist, rlist, elist, iord, last )
+  ier, alist, blist, rlist, elist, iord, last, param )
 
 !*****************************************************************************80
 !
@@ -338,6 +339,7 @@ subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
 !      function f ( x )
 !      double precision f
 !      double precision x
+!      double precision param
 !    which evaluates the integrand function.
 !
 !    Input, double precision A, B, the limits of integration.
@@ -457,6 +459,7 @@ subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
   double precision resabs
   double precision result
   double precision rlist(limit)
+  double precision param
 !
 !  Test on validity of parameters.
 !
@@ -486,7 +489,7 @@ subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
   neval = 0
 
   if ( keyf == 1 ) then
-    call qk15 ( f, a, b, result, abserr, defabs, resabs )
+    call qk15 ( f, a, b, result, abserr, defabs, resabs, param )
   else if ( keyf == 2 ) then
     call qk21 ( f, a, b, result, abserr, defabs, resabs )
   else if ( keyf == 3 ) then
@@ -551,7 +554,7 @@ subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
     b2 = blist(maxerr)
 
     if ( keyf == 1 ) then
-      call qk15 ( f, a1, b1, area1, error1, resabs, defab1 )
+      call qk15 ( f, a1, b1, area1, error1, resabs, defab1, param )
     else if ( keyf == 2 ) then
       call qk21 ( f, a1, b1, area1, error1, resabs, defab1 )
     else if ( keyf == 3 ) then
@@ -565,7 +568,7 @@ subroutine qage ( f, a, b, epsabs, epsrel, key, limit, result, abserr, neval, &
     end if
 
     if ( keyf == 1 ) then
-      call qk15 ( f, a2, b2, area2, error2, resabs, defab2 )
+      call qk15 ( f, a2, b2, area2, error2, resabs, defab2, param )
     else if ( keyf == 2 ) then
       call qk21 ( f, a2, b2, area2, error2, resabs, defab2 )
     else if ( keyf == 3 ) then
@@ -6200,7 +6203,7 @@ subroutine qfour ( f, a, b, omega, integr, epsabs, epsrel, limit, icall, &
 
   return
 end subroutine
-subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
+subroutine qk15 ( f, a, b, result, abserr, resabs, resasc , param)
 
 !*****************************************************************************80
 !
@@ -6228,12 +6231,15 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
 !  Parameters:
 !
 !    Input, external double precision F, the name of the function routine, of the form
-!      function f ( x )
+!      function f ( x , param )
 !      double precision f
 !      double precision x
+!      double precision param
 !    which evaluates the integrand function.
 !
 !    Input, double precision A, B, the limits of integration.
+!    
+!    Input, double precision Param, integration function parameter 
 !
 !    Output, double precision RESULT, the estimated value of the integral.
 !    RESULT is computed by applying the 15-point Kronrod rule (RESK) 
@@ -6301,6 +6307,7 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
   double precision wg(4)
   double precision wgk(8)
   double precision xgk(8)
+  double precision param 
 
   data xgk(1),xgk(2),xgk(3),xgk(4),xgk(5),xgk(6),xgk(7),xgk(8)/ &
        9.914553711208126d-01,   9.491079123427585d-01, &
@@ -6323,7 +6330,7 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
 !  Compute the 15-point Kronrod approximation to the integral,
 !  and estimate the absolute error.
 !
-  fc = f(centr)
+  fc = f(centr, param)
   resg = fc*wg(4)
   resk = fc*wgk(8)
   resabs = abs(resk)
@@ -6331,8 +6338,8 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
   do j = 1, 3
     jtw = j*2
     absc = hlgth*xgk(jtw)
-    fval1 = f(centr-absc)
-    fval2 = f(centr+absc)
+    fval1 = f(centr-absc, param)
+    fval2 = f(centr+absc, param)
     fv1(jtw) = fval1
     fv2(jtw) = fval2
     fsum = fval1+fval2
@@ -6344,8 +6351,8 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
   do j = 1, 4
     jtwm1 = j*2-1
     absc = hlgth*xgk(jtwm1)
-    fval1 = f(centr-absc)
-    fval2 = f(centr+absc)
+    fval1 = f(centr-absc, param)
+    fval2 = f(centr+absc, param)
     fv1(jtwm1) = fval1
     fv2(jtwm1) = fval2
     fsum = fval1+fval2
