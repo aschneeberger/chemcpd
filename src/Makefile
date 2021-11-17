@@ -1,6 +1,6 @@
 all: chemcpd.exe
 
-chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o profiles.o particular_functions.o  
+chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
 	gfortran  main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
 	make clean
 
@@ -22,7 +22,7 @@ particular_functions.o : particular_functions.f95
 	gfortran -c particular_functions.f95
 
 clean : 
-	rm *.o *.mod 
+	rm *.o *.mod *.dat
 
 mrproper : clean 
 	rm chemcpd.exe

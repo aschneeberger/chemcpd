@@ -56,6 +56,8 @@ USE PHYCTE
 USE MODCTE
 USE QUADPACK
 USE OPACITY
+USE PARTFUN
+
 
 implicit none 
 
@@ -102,6 +104,7 @@ function ang_mom_factor(N,r, R_c)
    
     end where 
 
+
 end function 
 
 
@@ -123,10 +126,10 @@ function spe_ang_mom()
     double precision ::  spe_ang_mom 
 
     if (p_M_p .lt. c_M_jup) then 
-        spe_ang_mom = 7.8d11 * (p_M_p/c_M_jup) * (p_a_p/c_au)**(7/4)
+        spe_ang_mom = 7.8d11 * (p_M_p/c_M_jup) * (p_a_p/c_au)**(7.0d0/4.0d0)
     
     else 
-        spe_ang_mom = 9.0d11 * (p_M_p/c_M_jup)**(2/3) * (p_a_p/c_au) **(7/4)
+        spe_ang_mom = 9.0d11 * (p_M_p/c_M_jup)**(2.0d0/3.0d0) * (p_a_p/c_au) **(7.0d0/4.0d0)
     end if 
 
 end function
@@ -229,7 +232,7 @@ function flux_accretion(N, r, R_c)
     double precision :: R_c 
     double precision , dimension(N) :: flux_accretion
 
-    flux_accretion = ((p_Xd * p_Chi * c_G * p_M_p * p_M_dot)/(4.0d0 * c_pi * R_c * R_c * r)) * exp(-r**2/R_c**2)
+    flux_accretion = ((p_Xd * p_Chi * c_G * p_M_p * p_M_dot)/(4.0d0 * c_pi * R_c * R_c * r)) * exp(-(r*r)/(R_c*R_c))
 
 
 end function 
@@ -752,9 +755,11 @@ subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid
 
     F_acc = flux_accretion(N,r,R_c)
 
+    write(*,*) cap_lambda
+
     ! Real first guesses 
 
-
+    call Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
 
 end subroutine
 
@@ -778,6 +783,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
 
     !INTERNAL VARS 
 
+    integer ::i !index variable 
     double precision , dimension(N) :: c_s ! mid plane sound speed 
     double precision , dimension(N) :: h ! gas scale height 
     double precision , dimension(N) :: mu ! dynamical viscosity 
@@ -809,7 +815,16 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
     !Approximation de z_s from the gas scale height from heller 2015
     call opacity_table(N, T_s, beta, kappa_0, kappa_p) ! use opacity at surface temperature
 
-     
+    !derfi is erf inverse but from math lib that do not take array in input ...
+    do i=1,N
+        z_s(i) = derfi(max(min(1 - (2.0d0/3.0d0) / kappa_p(i) * 2.0d0/sigma(i) , 0.99999d0),0.0d0 )) * sqrt(2.0d0) * h(i)
+    end do 
+    
+    !computation of z_add 
+    z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(T_mid - T_s)/omegak
+
+    ! computation of rho_s 
+    rho_s = rho_add  * exp(-c_gamma/2.0d0 * (z_s*z_s - z_add*z_add)/(h*h))
 
 end subroutine 
 

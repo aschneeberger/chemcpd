@@ -1,13 +1,4 @@
 
-function fcn_int(x)
-
-    double precision :: x,f 
-
-    f = exp(-x*x)
-
-end function 
-
-
 PROGRAM CHEMCPD 
 
 USE RESIDUES
@@ -17,31 +8,45 @@ USE DSKPHY
 USE QUADPACK
 USE PARTFUN
 
-
-integer , parameter :: n = 5
+integer :: i ! index variable
 real(8) , dimension(2) ::  x0, fvec
 real(8) :: tol 
 integer :: info 
-double precision , dimension(n) :: r
-double precision :: R_c
 
-double precision ::  epsabs = 1.0d-3,epsrel=1.0d-6
-integer :: key = 1
-double precision :: a = -100.0d0 ,b = +100.0d0
+!Physical parameters 
+double precision , dimension(p_Nr) :: r
+double precision  :: R_c
+double precision , dimension(p_Nr) :: cap_lambda
+double precision , dimension(p_Nr) :: omegak
+double precision , dimension(p_Nr) :: F_vis
+double precision , dimension(p_Nr) :: F_acc 
+double precision , dimension(p_Nr) :: T_mid
+double precision , dimension(p_Nr) :: T_s
+double precision , dimension(p_Nr) :: rho_mid
+double precision , dimension(p_Nr) :: rho_add
+double precision , dimension(p_Nr) :: rho_s
+double precision , dimension(p_Nr) :: z_add
+double precision , dimension(p_Nr) :: z_s
+double precision , dimension(p_Nr) :: sigma
 
-double precision :: results 
-double precision ::  abserr
-integer  :: neval,ier
+!Linear grid 
+forall(i = 1:p_Nr) r(i) = (p_R_disk - p_R_p) * float(i) / float(p_Nr) + p_R_p
 
-x0 = [1.0d0,1.0d0]
+write(*,*) r
 
-call QAG(fcn_int,a,b,epsabs,epsrel,jey,results,abserr,neval,ier,5.0d0)
+call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
 
+ 
+open(unit=10, file='initialisation.dat',status='new')
 
-call hybrd1 (Test_fcn, 2, x0, fvec, tol, info)
+write(10,*) 'r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i),rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i)'
 
-write(*,*) derfi(0.2d0)
+do i = 1,p_Nr 
 
+write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i),rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i)
+
+end do 
+close(unit=10) 
 
 END PROGRAM
 

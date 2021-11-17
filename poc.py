@@ -143,8 +143,41 @@ that do take into account the luminosity if the central planet.
 #--------------------- Planck opcity table ---------------------------------------------------------#
 
 def mean_planck_opacity(temp_surf,Chi) : 
-    
-    return  0.1/10 , 0.5 ,Chi * 0.1 * (temp_surf**0.5)/10
+    """
+    Use table from pollack 1994, given in cm².g-1 converted back to m².Kg-1
+    """
+
+    kappa_p = np.zeros_like(temp_surf)
+    beta = np.zeros_like(temp_surf)
+    kappa_0 = np.zeros_like(temp_surf)
+
+    # T<Tw
+    mask = temp_surf<173.0
+    kappa_p[mask] = 1.6e-5 * Chi * temp_surf[mask]**2.1 
+    beta[mask] = 2.1 
+    kappa_0[mask] = 1.6e-5 
+
+    #Tw<T<425
+    mask = (173.0<temp_surf) * (temp_surf<425.0)
+    kappa_p[mask] = 1.7e-2 * Chi * temp_surf[mask]**0.6
+    beta[mask] = 0.6
+    kappa_0[mask] = 1.7e-2 
+
+    #425<T<680 
+    mask = (425<temp_surf)* (temp_surf<680)
+    kappa_p[mask] = 1e-2 * Chi * temp_surf[mask]**0.5 
+    beta[mask] = 0.5 
+    kappa_0[mask] = 1e-2
+
+    #T>680 
+    mask = temp_surf > 680 
+    kappa_p[mask] = 1.9e-3 * Chi * temp_surf[mask] **0.75 
+    beta[mask] = 0.75 
+    kappa_0[mask] = 1.9e-3
+
+    return kappa_0 , beta , kappa_p  
+
+
 
 #-----------------------Surface temperature computation----------------------------------------#
 
