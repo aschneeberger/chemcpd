@@ -3,6 +3,7 @@ all: chemcpd.exe
 chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
 	gfortran  main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
 	make clean
+	make reset
 
 .PHONY : clean
 
@@ -26,3 +27,6 @@ clean :
 
 mrproper : clean 
 	rm chemcpd.exe
+
+reset : 
+	rm -rf ../Data/*
