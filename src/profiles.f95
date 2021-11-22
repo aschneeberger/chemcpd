@@ -802,8 +802,6 @@ subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid
 
     F_acc = flux_accretion(N,r,R_c)
 
-    write(*,*) cap_lambda
-
     ! Real first guesses 
 
     call Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
