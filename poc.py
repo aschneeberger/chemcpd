@@ -12,7 +12,7 @@ import scipy.optimize as opt
 import scipy.integrate as  int
 import astropy.constants as cte
 from scipy.optimize._lsq.least_squares import soft_l1
-from scipy.special import erfinv
+from scipy.special import erfinv, erf 
 import matplotlib.pyplot as plt 
 import scipy as sc
 
@@ -146,14 +146,13 @@ def mean_planck_opacity(temp_surf,Chi) :
     """
     Use table from pollack 1994, given in cm².g-1 converted back to m².Kg-1
     """
-
+    sgm = 20 
     kappa_p = np.zeros_like(temp_surf)
     beta = np.zeros_like(temp_surf)
     kappa_0 = np.zeros_like(temp_surf)
 
     # T<Tw
     mask = temp_surf<173.0
-    kappa_p[mask] = 1.6e-5 * Chi * temp_surf[mask]**2.1 
     beta[mask] = 2.1 
     kappa_0[mask] = 1.6e-5 
 
@@ -165,16 +164,25 @@ def mean_planck_opacity(temp_surf,Chi) :
 
     #425<T<680 
     mask = (425<temp_surf)* (temp_surf<680)
-    kappa_p[mask] = 1e-2 * Chi * temp_surf[mask]**0.5 
     beta[mask] = 0.5 
     kappa_0[mask] = 1e-2
 
     #T>680 
     mask = temp_surf > 680 
-    kappa_p[mask] = 1.9e-3 * Chi * temp_surf[mask] **0.75 
     beta[mask] = 0.75 
     kappa_0[mask] = 1.9e-3
 
+    Tw= 173 
+    T1 = 425 
+    T2 = 680 
+    Tsi = 1200 
+
+    kappa_p1 = Chi *  0.5*1.6e-5*temp_surf**2.1 *(erf((Tw-temp_surf)/sgm) +1 ) 
+    kappa_p2 = Chi * 0.25 * 1.7e-2 * temp_surf**0.6 * (erf((temp_surf-Tw)/sgm) +1 ) * (erf((T1 - temp_surf)/sgm) +1)
+    kappa_p3 = Chi * 0.25 * 1e-2 * temp_surf**0.5 * (erf((temp_surf-T1)/sgm) +1 ) * (erf((T2 - temp_surf)/sgm) +1)
+    kappa_p4 = Chi * 0.5 * 1.9e-3 * temp_surf**0.75 * (erf((temp_surf-T2)/sgm) +1 ) #  * (erf((Tsi - temp_surf)/sgm) +1)
+
+    kappa_p = kappa_p1 + kappa_p2 + kappa_p3 + kappa_p4 
     return kappa_0 , beta , kappa_p  
 
 

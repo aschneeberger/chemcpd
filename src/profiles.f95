@@ -26,6 +26,26 @@ implicit none
 
 contains
 subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
+! Compute the mean planck opacity table as function of the temprature only, 
+! from makalkin et al 2006 . To avoid brutal disconituity, all parts 
+! of the opcity table are weighted with error functions, to have transition of p_sgm K,
+! in constants table. 
+!
+! -------
+! Input :
+! -------
+!
+! N : Integer : grid size 
+! Temp(N) : double precision : Temperature at witch the opqcity is computed
+!
+! --------
+! Output :
+! --------
+!
+! beta(N) : double precision : power factor in the power law approximation 
+! kappa_0(N) : double precision : scaling factor in the power law approximation
+! kappa_p(N) : double precision : mean planck opacity 
+
 
     !IN/OUT
     integer , intent(in) :: N 
@@ -36,10 +56,37 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 
     !INTERNALS
     integer :: i
+    ! Intermediary variables 
+    double precision , dimension(N) :: kappa_p1 , kappa_p2, kappa_p3, kappa_p4 ! for erf sum 
+    double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
+    double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
+    double precision :: sgm = 20.0d0
 
-    forall (i = 1:N) kappa_0(i) = 0.1/10.0d0 
-    forall (i = 1:N) beta(i) = 0.5 
-    forall (i = 1:N) kappa_p(i) = 0.1 * p_Chi * Temp(i)**0.5 / 10.0d0
+    !Computation of kappa_p using erf weights to fill discontinuitis
+
+    kappa_p1 = p_Chi *  0.5d0 * 1.6d-5*Temp**2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
+    kappa_p2 =  p_Chi * 0.25d0 * 1.7d0-2 * Temp**0.6d0 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p3 = p_Chi * 0.25d0 * 1.0d-2 * Temp**0.5d0 * (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p4 = p_Chi * 0.5d0 * 1.9d-3 * Temp**0.75 * (erf((Temp-680)/sgm) +1.0d0 )
+
+    kappa_p = kappa_p1 + kappa_p2 + kappa_p3 + kappa_p4 ! The final value is the sum of all weighted cased 
+    
+    !Computation of kappa_0 using erf weights to fill discontinuitis
+    kappa_01 =   0.5d0 * 1.6d-5 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
+    kappa_02 =  0.25d0 * 1.7d0-2 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_03 =  0.25d0 * 1.0d-2 *  (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    kappa_04 =  0.5d0 * 1.9d-3 *  (erf((Temp-680)/sgm) +1.0d0 )
+
+    kappa_0 = kappa_01 + kappa_02 + kappa_03 + kappa_04 ! The final value is the sum of all weighted cased 
+
+
+    !Computation of beta using erf weights to fill discontinuitis
+    kappa_p1 = 0.5d0 * 2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
+    kappa_p2 = 0.25d0 * 0.6d0 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p3 = 0.25d0 * 0.5d0 * (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p4 = 0.5d0 * 0.75 * (erf((Temp-680)/sgm) +1.0d0 )
+
+    beta = beta_1 + beta_2 + beta_3 + beta_4  ! The final value is the sum of all weighted cased 
 
 end subroutine
 
