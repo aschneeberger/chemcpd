@@ -44,11 +44,11 @@ implicit none
 !---------------------
 
 ! Dust to gas mass ratio in the PSN at Jupiter's formation location from Heller 2015
-double precision , parameter :: p_Xd = 0.006 
+double precision , parameter :: p_Xd = 0.006d0
 
 ! Enchiment factor in dust between the PSN and the cpd chi = Xd(cpd)/Xd(psn). 
 ! Can be btw 1 and 1.5 (Ruskol 2006)
-double precision , parameter :: p_Chi = 1.0 
+double precision , parameter :: p_Chi = 1.0d0 
 
 !mean gas molecular weight from aguichine 2020 [Kg.mol-1] 
 double precision , parameter :: p_mu_gas = 2.341d-3 
@@ -68,7 +68,7 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 100 ! number of point in the r grid 
+integer, parameter :: p_Nr = 10000 ! number of point in the r grid 
 
 
 !--------------------

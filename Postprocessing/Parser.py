@@ -57,4 +57,5 @@ def control_plot(data_table,key,xlog=False,ylog=False) :
 
 
 table = Parse(DIRECTORY,FILENAME)
-control_plot(table,'T_mid',xlog=True)
+for key in table.colnames :
+    control_plot(table,key,xlog=True)

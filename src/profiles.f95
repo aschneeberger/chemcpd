@@ -61,30 +61,34 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
     double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
     double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
     double precision :: sgm = 20.0d0
-
+    
     !Computation of kappa_p using erf weights to fill discontinuitis
 
-    kappa_p1 = p_Chi *  0.5d0 * 1.6d-5*Temp**2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_p2 =  p_Chi * 0.25d0 * 1.7d0-2 * Temp**0.6d0 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p3 = p_Chi * 0.25d0 * 1.0d-2 * Temp**0.5d0 * (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p4 = p_Chi * 0.5d0 * 1.9d-3 * Temp**0.75 * (erf((Temp-680)/sgm) +1.0d0 )
+    kappa_p1 = p_Chi *  0.5d0 * 1.6d-5 * Temp**2.1d0 * (erf((173.0d0-Temp)/sgm) + 1.0d0 ) 
+    kappa_p2 = p_Chi * 0.25d0 * 1.7d-2 * Temp**0.6d0 * (erf((Temp-173.0d0)/sgm) + 1.0d0 ) * &
+                &  (erf((425.0d0 - Temp)/sgm) + 1.0d0)
 
+    kappa_p3 = p_Chi * 0.25d0 * 1.0d-2 * Temp**0.5d0 * (erf((Temp-425.0d0)/sgm) + 1.0d0 ) * &
+                &  (erf((680.0d0 - Temp)/sgm) + 1.0d0)
+
+    kappa_p4 = p_Chi * 0.5d0  * 1.9d-3 * Temp**0.75d0* (erf((Temp-680.0d0)/sgm) + 1.0d0 )
     kappa_p = kappa_p1 + kappa_p2 + kappa_p3 + kappa_p4 ! The final value is the sum of all weighted cased 
-    
+
+
     !Computation of kappa_0 using erf weights to fill discontinuitis
     kappa_01 =   0.5d0 * 1.6d-5 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_02 =  0.25d0 * 1.7d0-2 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
-    kappa_03 =  0.25d0 * 1.0d-2 *  (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
-    kappa_04 =  0.5d0 * 1.9d-3 *  (erf((Temp-680)/sgm) +1.0d0 )
+    kappa_02 =  0.25d0 * 1.7d0-2 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_03 =  0.25d0 * 1.0d-2 *  (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    kappa_04 =  0.5d0 * 1.9d-3 *  (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
     kappa_0 = kappa_01 + kappa_02 + kappa_03 + kappa_04 ! The final value is the sum of all weighted cased 
 
 
     !Computation of beta using erf weights to fill discontinuitis
     kappa_p1 = 0.5d0 * 2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_p2 = 0.25d0 * 0.6d0 * (erf((Temp-173)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p3 = 0.25d0 * 0.5d0 * (erf((Temp-425)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p4 = 0.5d0 * 0.75 * (erf((Temp-680)/sgm) +1.0d0 )
+    kappa_p2 = 0.25d0 * 0.6d0 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p3 = 0.25d0 * 0.5d0 * (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    kappa_p4 = 0.5d0 * 0.75 * (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
     beta = beta_1 + beta_2 + beta_3 + beta_4  ! The final value is the sum of all weighted cased 
 
@@ -142,12 +146,12 @@ function ang_mom_factor(N,r, R_c)
 
     ! Closer than R_c, the gas infall from the PSN contribute to the total CPD angular momentum
     where (r .lt. R_c) 
-        ang_mom_factor =  1 - 1/5 * (r/R_c)**2 - sqrt(p_R_p/r) - 4/5 * sqrt(R_c/p_R_disk) + 4/5 * sqrt((p_R_p*R_c)/(p_R_disk * r)) &
-                    & + 0.2 * sqrt(p_R_p/p_R_disk) * (r/R_c)**2 
+        ang_mom_factor =  1.0d0 - 0.2d0 * (r/R_c)**2.0d0 - sqrt(p_R_p/r) - 0.8d0 * sqrt(R_c/p_R_disk) + &
+                    & 0.8d0 * sqrt((p_R_p*R_c)/(p_R_disk * r)) + 0.2d0 * sqrt(p_R_p/p_R_disk) * (r/R_c)**2.0d0 
     
     ! Further than R_c, the gas drift outward and there is no more infall 
     elsewhere  
-        ang_mom_factor = 0.8 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8*sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
+        ang_mom_factor = 0.8d0 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8d0 * sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
    
     end where 
 
@@ -770,7 +774,7 @@ end function
 ! The user is free choose guesses that gives the better results  
 
 
-subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
+subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
 
     !IN/OUT
     integer , intent(in) :: N 
@@ -788,6 +792,7 @@ subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid
     double precision , intent(out) , dimension(N) :: z_add
     double precision , intent(out) , dimension(N) :: z_s
     double precision , intent(out) , dimension(N) :: sigma
+    double precision , intent(out) , dimension(N) :: kappa_p
 
     !INTERNAL VARS 
 
@@ -804,11 +809,11 @@ subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid
 
     ! Real first guesses 
 
-    call Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
+    call Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
 
 end subroutine
 
-subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma)
+subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
     
     !IN/OUT
     integer , intent(in) :: N 
@@ -837,10 +842,11 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
     !opacity subroutine 
     double precision , dimension(N) :: beta 
     double precision , dimension(N) :: kappa_0 
-    double precision , dimension(N) :: kappa_p
+    double precision , intent(out) , dimension(N) :: kappa_p
 
     ! From equation 4 of anderson et al 2021 
-    T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + p_T_neb**4.0d0)**0.25
+    T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + &
+    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25
     T_s = T_mid / 5.0d0
 
     c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
@@ -861,12 +867,15 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
     call opacity_table(N, T_s, beta, kappa_0, kappa_p) ! use opacity at surface temperature
 
     !derfi is erf inverse but from math lib that do not take array in input ...
-    do i=1,N
-        z_s(i) = derfi(max(min(1 - (2.0d0/3.0d0) / kappa_p(i) * 2.0d0/sigma(i) , 0.99999d0),0.0d0 )) * sqrt(2.0d0) * h(i)
-    end do 
+    ! do i=1,N
+    !     z_s(i) = derfi(max(min(1 - (2.0d0/3.0d0) / kappa_p(i) * 2.0d0/sigma(i) , 0.99999d0),0.0d0 )) * sqrt(2.0d0) * h(i)
+    ! end do 
     
     !computation of z_add 
     z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(T_mid - T_s)/omegak
+
+    z_s = z_add*1.2d0
+    !z_add = min(z_add,z_s/1.2d0) ! ensure the physical validity of z_s / z_add guesses, since z_add<z_s
 
     ! computation of rho_s 
     rho_s = rho_add  * exp(-c_gamma/2.0d0 * (z_s*z_s - z_add*z_add)/(h*h))
