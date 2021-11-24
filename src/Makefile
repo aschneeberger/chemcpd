@@ -1,11 +1,15 @@
+.PHONY : clean all chemcpd.exe
+
+FLAG = -O2
+OBJ = quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
+
 all: chemcpd.exe
 
 chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
-	gfortran  main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
+	gfortran $(FLAG) main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
 	make clean
 	make reset
 
-.PHONY : clean
 
 minpack.o : minpack.f95 
 	gfortran -c minpack.f95

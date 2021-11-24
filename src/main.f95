@@ -32,8 +32,8 @@ double precision , dimension(p_Nr) :: kappa_p
 DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X ! array containin all variables (8*p_Nr) 
 DOUBLE PRECISION , dimension(p_Nr*8) :: fvec ! Residues array 
 double precision :: tol = 1.0d-2 !asked relative error in the resolution 
+double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
 
-double precision :: main_var = 2.0d0
 integer :: info !output code of the solver : 
 !    0, improper input parameters.
 !    1, algorithm estimates that the relative error between X and the
@@ -44,27 +44,58 @@ integer :: info !output code of the solver :
 !    4, the iteration is not making good progress.
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!
+!   Initialization     ! 
+!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Linear grid 
 forall(i = 1:p_Nr) r(i) = (p_R_disk - p_R_p) * float(i) / float(p_Nr) + p_R_p
 
+!Initialize the profiles 
 call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
 
-x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
-
-call Equation_system_ms(8*p_Nr,x,fvec,0)
-
-!call hybrd1 (Test_fcn, 2, x, fvec, tol, info)
-
+! Write the initization in a file in table format (for astropy table use)
 open(unit=10, file='../Data/initialisation.dat',status='new')
 
 write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
 
 do i = 1,p_Nr 
+    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+    &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+end do 
+close(unit=10) 
 
-write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-&,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+!!!!!!!!!!!!!!!!!!!!!!!!
+!      Resolution      ! 
+!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Create the variable to be parsed in the solver subroutine 
+x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
+
+!Create the argument to be parsed in Equation_system_ms
+args = [cap_lambda,omegak,F_vis,F_acc,r]
+
+!Lauch the solver 
+call hybrd1 (Equation_system_ms, p_Nr*8, x, fvec, tol, info , 5*p_Nr , args)
+
+!Parse the solution
+sigma = x(1 : p_Nr)
+T_mid = x(p_Nr+1 : 2*p_Nr)
+T_s = x(2*p_Nr+1 : 3*p_Nr)
+z_s = x(3*p_Nr+1 : 4*p_Nr) 
+z_add = x(4*p_Nr+1 : 5*p_Nr)
+rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+rho_add = x(6*p_Nr+1 : 7*p_Nr)
+rho_s = x(7*p_Nr+1 : 8*p_Nr)
+
+!Write the solution in a file
+open(unit=10, file='../Data/Solution.dat',status='new')
+
+write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+
+do i = 1,p_Nr 
+    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+    &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
 end do 
 close(unit=10) 
 

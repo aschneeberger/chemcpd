@@ -296,7 +296,7 @@ end function
 
 
 
-function flux_planet(r,N,z_s)
+function flux_planet(N,r,z_s)
 ! Compute the energy from the planet the disk received, NOT THE ONE 
 ! THE DISK ABSORB ! In case of debuging code convergence, pay attention 
 ! to this paramater involving derivative of z_s that depend on T_s
@@ -334,7 +334,7 @@ function flux_planet(r,N,z_s)
     eta = atan(dzdr) - atan(z_s/r)
 
     !Planet energy flux on disk 
-    flux_planet = p_L_p * sin(eps * r + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
+    flux_planet = p_L_p * sin(eps  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
 
 end function
 
@@ -925,7 +925,7 @@ function fcn_int(x,param)
 
 end function 
 
-subroutine Test_fcn ( N, x, res ,iflag )
+subroutine Test_fcn ( N, x, res ,iflag, n_args, args )
 ! Test function to test solvers, constructed as stupulated in MINPACK
 ! Variables:  
 ! n : integer , IN : number of unknown and equations = 2 here
@@ -935,17 +935,18 @@ subroutine Test_fcn ( N, x, res ,iflag )
 !-----------------
 ! Test function must solve eq system of type F[X] = 0 
 
-    integer :: N
+    integer :: N, n_args 
     real( kind = 8 ) :: res(n)
+    double precision , dimension(n_args):: args
     integer :: iflag
     real ( kind = 8 ) ::  x(n)
 
-    res(1) = -2 + x(1)**2 - 3*x(2)
-    res(2) = 3*x(1)- 4*x(2)
+    res(1) = -args(1) + x(1)**2 - 3*x(2)
+    res(2) = args(2)*x(1)- 4*x(2)
 end subroutine
 
 
-subroutine Equation_system_ms (N, x, res ,iflag)
+subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
 ! photosurface temperature profile along with surface temperature. 
 ! Each residue is named from the original paper equation number, 
@@ -954,12 +955,18 @@ subroutine Equation_system_ms (N, x, res ,iflag)
 ! Variables:
 ! ----------
 ! N : Integer, IN : 
-!     Size of equation system (=8) 
+!     Size of equation system (=8N) 
+!
+! N_args : Integer, IN : 
+!     Size of argument array (=5N)
 !
 ! x(N) : double precision, IN/OUT: 
 !  vector of [sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s]
 !
-! res(N) : double precision, OUT :
+! args(N_args) : Integer, IN :
+!    Vector of [cap_lambda,omegak,F_vis,F_acc,r], constant arguments throughout the resolution
+!
+! fvec(N) : double precision, OUT :
 !   vector of equation system residue: [res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39]
 !
 ! iflag : integer IN/OUT :
@@ -967,16 +974,24 @@ subroutine Equation_system_ms (N, x, res ,iflag)
 !   if 0 : only print X 
 !   if 1 : compute residues 
 
-    integer :: N , iflag                                 
-    double precision , dimension(N)::  res , x
-
+    !IN/OUT
+    integer :: N , iflag
+    integer :: N_args                                 
+    double precision , dimension(N)::  fvec , x
+    DOUBLE PRECISION , DIMENSION(N_args):: args 
+    
+    !INTERNALS
+    double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
+    double precision , dimension(P_Nr) :: F_planet ! planetary flux
+    double precision , dimension(P_Nr) :: Q_s ! surface mass coordinate (see makalkin 1994 for precisions)
     ! Function variables 
     double precision , DIMENSION(p_Nr) :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
-
+    !Function arguments 
+    double precision , dimension(p_Nr) :: cap_lambda, omegak, F_vis, F_acc, r
     ! residue
-
     double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
-
+    write(*,*) 'here'
+    
     !Parse all unknown from X vetor given by the resolution subroutine
     sigma = x(1 : p_Nr)
     T_mid = x(p_Nr+1 : 2*p_Nr)
@@ -987,12 +1002,42 @@ subroutine Equation_system_ms (N, x, res ,iflag)
     rho_add = x(6*p_Nr+1 : 7*p_Nr)
     rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
-    write(*,*) 'res func' ,p_Nr
+    !Parse all constants from args array 
+    cap_lambda = args(1 : p_Nr)
+    omegak = args(p_Nr+1 : 2*p_Nr)
+    F_vis = args(2*p_Nr +1: 3*p_Nr)
+    F_acc = args(3*N_args+1 : 4*p_Nr)
+    r = args(4*N_args+1 : 5*p_Nr)
 
-    !res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,,)
+    !accretion rate 
+    res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)
+    
+    !Surface temperature   
+    call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) !compute mean opcity 
+    
+    F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
-    ! concatenate everytiong 
-    res = [res_10,res_17,res_23,res_24,res_24,res_31,res_36,res_37,res_39]
+    res_17 = T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
+
+    !Addiabatique to istherm altitue gas density 
+    res_23 = rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_s,omegak)
+
+    res_36 = rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid)
+
+    !optical depth computation 
+    res_24 = 2.0d0/3.0d0 - optical_depth(p_Nr,rho_s,kappa_p,z_s,omegak,T_s)
+
+    !mid plane computation 
+    Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
+    res_31 = temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)
+
+    !addiabatique to isotherm transition altitude 
+    res_37 = z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)
+
+    !surface density 
+    res_39 = sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)
+    ! concatenate everyting 
+    fvec = [res_10,res_17,res_23,res_24,res_24,res_31,res_36,res_37,res_39]
 
 end subroutine 
 

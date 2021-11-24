@@ -210,7 +210,7 @@ def F_planet(L_p, R_p , zs, r):
 
     eta = np.arctan(dzsdr) - np.arctan(zs/r)
 
-    F_p = L_p * np.sin(eps*r  + eta)/(8 * np.pi *(r*r + zs*zs))
+    F_p = L_p * np.sin(eps  + eta)/(8 * np.pi *(r*r + zs*zs))
     F_p[F_p<0.0] = 0.0
 
     return F_p

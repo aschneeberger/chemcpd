@@ -571,7 +571,7 @@ function enorm2 ( n, x )
 
   return
 end
-subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn )
+subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn, n_args, args )
 
 !*****************************************************************************80
 !
@@ -653,7 +653,9 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn )
 
   integer ldfjac
   integer n
+  integer n_args 
 
+  real( kind = rk) args(n_args)
   real ( kind = rk ) eps
   real ( kind = rk ) epsfcn
   real ( kind = rk ) epsmch
@@ -692,7 +694,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn )
 
         iflag = 1
         x(j) = temp + h
-        call fcn ( n, x, wa1, iflag )
+        call fcn ( n, x, wa1, iflag, n_args, args )
 
         if ( iflag < 0 ) then
           exit
@@ -719,7 +721,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn )
         end do
 
         iflag = 1
-        call fcn ( n, x, wa1, iflag )
+        call fcn ( n, x, wa1, iflag, n_args, args )
 
         if ( iflag < 0 ) then
           exit
@@ -873,7 +875,7 @@ subroutine fdjac2 ( fcn, m, n, x, fvec, fjac, ldfjac, iflag, epsfcn )
   return
 end
 subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
-  factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf )
+  factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf, n_args , args )
 
 !*****************************************************************************80
 !
@@ -1007,6 +1009,8 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
   integer ldfjac
   integer lr
   integer n
+  integer n_args
+  real( kind = rk) args(n_args)
 
   real ( kind = rk ) actred
   real ( kind = rk ) delta
@@ -1096,7 +1100,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
 !  and calculate its norm.
 !
   iflag = 1
-  call fcn ( n, x, fvec, iflag )
+  call fcn ( n, x, fvec, iflag, n_args , args )
   nfev = 1
 
   if ( iflag < 0 ) then
@@ -1126,7 +1130,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
 !  Calculate the jacobian matrix.
 !
     iflag = 2
-    call fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn )
+    call fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn , n_args, args )
 
     nfev = nfev + msum
 
@@ -1217,7 +1221,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
         if ( 0 < nprint ) then
           iflag = 0
           if ( mod ( iter - 1, nprint ) == 0 ) then
-            call fcn ( n, x, fvec, iflag )
+            call fcn ( n, x, fvec, iflag, n_args, args )
           end if
           if ( iflag < 0 ) then
             go to 300
@@ -1246,7 +1250,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
 !  Evaluate the function at X + P and calculate its norm.
 !
         iflag = 1
-        call fcn ( n, wa2, wa4, iflag )
+        call fcn ( n, wa2, wa4, iflag, n_args , args)
         nfev = nfev + 1
 
         if ( iflag < 0 ) then
@@ -1418,12 +1422,12 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
   iflag = 0
 
   if ( 0 < nprint ) then
-    call fcn ( n, x, fvec, iflag )
+    call fcn ( n, x, fvec, iflag, n_args, args )
   end if
 
   return
 end
-subroutine hybrd1 ( fcn, n, x, fvec, tol, info )
+subroutine hybrd1 ( fcn, n, x, fvec, tol, info ,n_args , args )
 
 !*****************************************************************************80
 !
@@ -1502,6 +1506,8 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info )
   integer, parameter :: rk = kind ( 1.0D+00 )
 
   integer n
+  integer :: n_args
+  real ( kind = rk ) args(n_args)
 
   real ( kind = rk ) diag(n)
   real ( kind = rk ) epsfcn
@@ -1552,7 +1558,7 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info )
   qtf(1:n) = 0.0D+00
 
   call hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
-    factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf )
+    factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf, n_args, args )
 
   if ( info == 5 ) then
     info = 4
