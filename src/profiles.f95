@@ -892,6 +892,8 @@ MODULE RESIDUES
 
 USE MINPACK
 USE DSKPHY
+USE MODCTE
+USE PHYCTE
 
 IMPLICIT NONE 
 
@@ -923,7 +925,7 @@ function fcn_int(x,param)
 
 end function 
 
-subroutine Test_fcn ( n, x, res ,iflag )
+subroutine Test_fcn ( N, x, res ,iflag )
 ! Test function to test solvers, constructed as stupulated in MINPACK
 ! Variables:  
 ! n : integer , IN : number of unknown and equations = 2 here
@@ -933,7 +935,7 @@ subroutine Test_fcn ( n, x, res ,iflag )
 !-----------------
 ! Test function must solve eq system of type F[X] = 0 
 
-    integer :: n
+    integer :: N
     real( kind = 8 ) :: res(n)
     integer :: iflag
     real ( kind = 8 ) ::  x(n)
@@ -954,7 +956,7 @@ subroutine Equation_system_ms (N, x, res ,iflag)
 ! N : Integer, IN : 
 !     Size of equation system (=8) 
 !
-! x'N) : double precision, IN/OUT: 
+! x(N) : double precision, IN/OUT: 
 !  vector of [sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s]
 !
 ! res(N) : double precision, OUT :
@@ -962,15 +964,35 @@ subroutine Equation_system_ms (N, x, res ,iflag)
 !
 ! iflag : integer IN/OUT :
 !   flag to communicate with solving subroutine api.
+!   if 0 : only print X 
+!   if 1 : compute residues 
 
-    integer :: n , iflag                                     
-    double precision ::  res(n) , x(n)
+    integer :: N , iflag                                 
+    double precision , dimension(N)::  res , x
 
     ! Function variables 
-    double precision :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
+    double precision , DIMENSION(p_Nr) :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
 
     ! residue
-    double precision :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
+
+    double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
+
+    !Parse all unknown from X vetor given by the resolution subroutine
+    sigma = x(1 : p_Nr)
+    T_mid = x(p_Nr+1 : 2*p_Nr)
+    T_s = x(2*p_Nr+1 : 3*p_Nr)
+    z_s = x(3*p_Nr+1 : 4*p_Nr) 
+    z_add = x(4*p_Nr+1 : 5*p_Nr)
+    rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+    rho_add = x(6*p_Nr+1 : 7*p_Nr)
+    rho_s = x(7*p_Nr+1 : 8*p_Nr)
+
+    write(*,*) 'res func' ,p_Nr
+
+    !res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,,)
+
+    ! concatenate everytiong 
+    res = [res_10,res_17,res_23,res_24,res_24,res_31,res_36,res_37,res_39]
 
 end subroutine 
 

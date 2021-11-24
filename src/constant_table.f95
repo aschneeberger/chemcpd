@@ -82,5 +82,5 @@ double precision , parameter :: p_M_dot = 4.0d-6 * c_M_earth/c_year   ! Accretio
 double precision , parameter :: p_R_hill = 5.0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
 double precision , parameter :: p_R_disk = p_R_hill / 5.0           ! Disk size [m]
 double precision , parameter :: p_L = 1.0d0 - sqrt(p_R_p/p_R_disk)          ! angular momentum transfert coeficient 
-
+  
 end module 
