@@ -68,7 +68,7 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 10000 ! number of point in the r grid 
+integer, parameter :: p_Nr = 100 ! number of point in the r grid 
 
 
 !--------------------

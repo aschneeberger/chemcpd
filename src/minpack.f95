@@ -674,6 +674,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn, n_args
   real ( kind = rk ) wa1(n)
   real ( kind = rk ) wa2(n)
   real ( kind = rk ) x(n)
+  write(*,*) "Entering FDJAC1"
 
   epsmch = epsilon ( epsmch )
 
@@ -749,7 +750,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn, n_args
      end do
 
   end if
-
+  write(*,*) "Exiting FDJAC1"
   return
 end
 subroutine fdjac2 ( fcn, m, n, x, fvec, fjac, ldfjac, iflag, epsfcn )
@@ -1059,6 +1060,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
   real ( kind = rk ) x(n)
   real ( kind = rk ) xnorm
   real ( kind = rk ) xtol
+  write(*,*) "Entering Hybrd"
 
   epsmch = epsilon ( epsmch )
 
@@ -1131,13 +1133,14 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
 !
     iflag = 2
     call fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn , n_args, args )
+    Write(*,*) "  Before nfev "
 
     nfev = nfev + msum
-
+    Write(*,*) "  Before Go to "
     if ( iflag < 0 ) then
       go to 300
     end if
-!
+    Write(*,*) "  Before Go to "
 !  Compute the QR factorization of the jacobian.
 !
     pivot = .false.
@@ -1530,16 +1533,18 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info ,n_args , args )
   real ( kind = rk ) x(n)
   real ( kind = rk ) xtol
 
+  write(*,*) "Entering Hybrd1"
+  
   if ( n <= 0 ) then
     info = 0
     return
   end if
-
+  
   if ( tol < 0.0D+00 ) then
     info = 0
     return
   end if
-
+  
   xtol = tol
   maxfev = 200 * ( n + 1 )
   ml = n - 1
@@ -1551,31 +1556,33 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info ,n_args , args )
   nprint = 0
   info = 0
   nfev = 0
-  fjac(1:n,1:n) = 0.0D+00
+  write(*,*) "hello minpack"
+  fjac(1:n,1:n) = 0.0d0
+  write(*,*) "hello minpack"
   ldfjac = n
   r(1:(n*(n+1))/2) = 0.0D+00
   lr = ( n * ( n + 1 ) ) / 2
   qtf(1:n) = 0.0D+00
-
+  
   call hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
-    factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf, n_args, args )
-
+  factor, nprint, info, nfev, fjac, ldfjac, r, lr, qtf, n_args, args )
+  
   if ( info == 5 ) then
     info = 4
   end if
-
+  
   return
-end
-subroutine hybrj ( fcn, n, x, fvec, fjac, ldfjac, xtol, maxfev, diag, mode, &
-  factor, nprint, info, nfev, njev, r, lr, qtf )
+  end
+  subroutine hybrj ( fcn, n, x, fvec, fjac, ldfjac, xtol, maxfev, diag, mode, &
+    factor, nprint, info, nfev, njev, r, lr, qtf )
 
-!*****************************************************************************80
-!
-!! HYBRJ seeks a zero of N nonlinear equations in N variables.
-!
-!  Discussion:
-!
-!    HYBRJ finds a zero of a system of N nonlinear functions in N variables
+    !*****************************************************************************80
+    !
+    !! HYBRJ seeks a zero of N nonlinear equations in N variables.
+    !
+    !  Discussion:
+    !
+    !    HYBRJ finds a zero of a system of N nonlinear functions in N variables
 !    by a modification of the Powell hybrid method.  The user must provide a
 !    subroutine which calculates the functions and the jacobian.
 !
@@ -4867,6 +4874,8 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
   real ( kind = rk ) temp
   real ( kind = rk ) wa(n)
 
+  WRITE(*,*) "Entering QRFAC"
+
   epsmch = epsilon ( epsmch )
 !
 !  Compute the initial column norms and initialize several arrays.
@@ -4960,7 +4969,7 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
     rdiag(j) = - ajnorm
 
   end do
-
+  WRITE(*,*) "Exiting QRFAC"
   return
 end
 subroutine qrsolv ( n, r, ldr, ipvt, diag, qtb, x, sdiag )

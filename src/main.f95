@@ -48,11 +48,15 @@ integer :: info !output code of the solver :
 !   Initialization     ! 
 !!!!!!!!!!!!!!!!!!!!!!!!
 
+
 !Linear grid 
 forall(i = 1:p_Nr) r(i) = (p_R_disk - p_R_p) * float(i) / float(p_Nr) + p_R_p
 
+Write(*,*) "[MAIN] Grid generated "
+
 !Initialize the profiles 
 call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
+Write(*,*) "[MAIN] Guesses Initialized "
 
 ! Write the initization in a file in table format (for astropy table use)
 open(unit=10, file='../Data/initialisation.dat',status='new')
@@ -64,6 +68,7 @@ do i = 1,p_Nr
     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
 end do 
 close(unit=10) 
+Write(*,*) "[MAIN] Guesses Written "
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !      Resolution      ! 
@@ -75,9 +80,11 @@ x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 !Create the argument to be parsed in Equation_system_ms
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
+Write(*,*) "[MAIN] Begining of solving "
+
 !Lauch the solver 
 call hybrd1 (Equation_system_ms, p_Nr*8, x, fvec, tol, info , 5*p_Nr , args)
-
+Write(*,*) "[MAIN] End of solving "
 !Parse the solution
 sigma = x(1 : p_Nr)
 T_mid = x(p_Nr+1 : 2*p_Nr)
@@ -89,6 +96,7 @@ rho_add = x(6*p_Nr+1 : 7*p_Nr)
 rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
 !Write the solution in a file
+
 open(unit=10, file='../Data/Solution.dat',status='new')
 
 write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
@@ -98,5 +106,6 @@ do i = 1,p_Nr
     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
 end do 
 close(unit=10) 
+Write(*,*) "[MAIN] Solution Written "
 
 END PROGRAM
