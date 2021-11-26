@@ -54,6 +54,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
     double precision , intent(out) , dimension(N) :: kappa_0 
     double precision , intent(out) , dimension(N) :: kappa_p
 
+    
     !INTERNALS
     integer :: i
     ! Intermediary variables 
@@ -61,7 +62,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
     double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
     double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
     double precision :: sgm = 20.0d0
-    
+
     !Computation of kappa_p using erf weights to fill discontinuitis
 
     kappa_p1 = p_Chi *  0.5d0 * 1.6d-5 * Temp**2.1d0 * (erf((173.0d0-Temp)/sgm) + 1.0d0 ) 
@@ -91,7 +92,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
     kappa_p4 = 0.5d0 * 0.75 * (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
     beta = beta_1 + beta_2 + beta_3 + beta_4  ! The final value is the sum of all weighted cased 
-
+     
 end subroutine
 
 END MODULE 
@@ -323,7 +324,6 @@ function flux_planet(N,r,z_s)
     !Internal vars 
     double precision , dimension(N) :: eps , eta    !Disk curvature parameters 
     double precision , dimension(N) :: dzdr        ! z_s derivative 
-
     !Central difference derivative of z_s 
     dzdr(1) = 0.0d0
     dzdr(2:N-1) = (z_s(1:N-2) - z_s(3:N)) / (r(1:N-2) - r(3:N)) 
@@ -721,7 +721,7 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
     zeta_a = z_add/z_s 
     !check if z_add > z_s to proceed, avoiding unphysical results 
     if (All(z_add < z_s)) then 
-        write(*,*) "WARNING : Unphysical situation, z_addiabatique > z_surface"
+        write(30,*) "WARNING : Unphysical situation, z_addiabatique > z_surface"
     end if 
 
     integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
@@ -994,8 +994,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     ! residue
     double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
 
-    write(*,*) "Entering Residue"
-
+    write(30,*) "Entering Residue"
     !Parse all unknown from X vetor given by the resolution subroutine
     sigma = x(1 : p_Nr)
     T_mid = x(p_Nr+1 : 2*p_Nr)
@@ -1012,59 +1011,59 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     F_vis = args(2*p_Nr +1: 3*p_Nr)
     F_acc = args(3*p_Nr+1 : 4*p_Nr)
     r = args(4*p_Nr+1 : 5*p_Nr)
-    write(*,*) '    Parsing complete'
+    !write(30,*) '    Parsing complete'
     !accretion rate 
     res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)
-    write(*,*) '    res_10 complete'
+    !write(30,*) '    res_10 complete'
 
-    !Surface temperature   
+    !Surface temperature  
     call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) !compute mean opcity 
     
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
     res_17 = T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
-    write(*,*) '    res_17 complete'
+    !write(30,*) '    res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
     res_23 = rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_s,omegak)
-    write(*,*) '    res_23 complete'
+    !write(30,*) '    res_23 complete'
 
     res_36 = rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid)
-    write(*,*) '    res_36 complete'
+    !write(30,*) '    res_36 complete'
 
     !optical depth computation 
     res_24 = 2.0d0/3.0d0 - optical_depth(p_Nr,rho_s,kappa_p,z_s,omegak,T_s)
-    write(*,*) '    res_24 complete'
+    !write(30,*) '    res_24 complete'
 
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     res_31 = temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)
-    write(*,*) '    res_31 complete'
+    !write(30,*) '    res_31 complete'
 
     !addiabatique to isotherm transition altitude 
     res_37 = z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)
-    write(*,*) '    res_37 complete'
+    !write(30,*) '    res_37 complete'
 
     !surface density 
     res_39 = sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)
-    write(*,*) '    res_39 complete'
+    !write(30,*) '    res_39 complete'
 
     ! concatenate everyting 
-    fvec = [res_10,res_17,res_23,res_24,res_24,res_31,res_36,res_37,res_39]
-    write(*,*) '    Serelizing complete'
+    fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
+    !write(30,*) '    Serelizing complete'
 
-    write(filename,'(a,I4.4,a)') "../Data/Inter",r_ncalls,'.dat'
-    Write(*,*) '    Writing intermediate file'
-    open(unit=20, file=filename,status='new')
-    write(20,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+    ! !write(filename,'(a,I4.4,a)') "../Data/Inter",r_ncalls,'.dat'
+    ! !write(30,*) '    Writing intermediate file'
+    ! open(unit=20, file=filename,status='new')
+    ! !write(20,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
     
     
-    do i = 1,p_Nr 
-        write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-        &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-    end do 
-    close(unit=20) 
-    write(*,*) "Exiting Residue"
+    ! do i = 1,p_Nr 
+    !     write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+    !     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+    ! end do 
+    ! close(unit=20) 
+    write(30,*) "Exiting Residue"
     r_ncalls = r_ncalls+1
 end subroutine 
 

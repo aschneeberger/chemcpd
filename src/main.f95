@@ -34,6 +34,9 @@ DOUBLE PRECISION , dimension(p_Nr*8) :: fvec ! Residues array
 double precision :: tol = 1.0d-2 !asked relative error in the resolution 
 double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
 
+!Test variables
+double precision , dimension(2) :: x_test = [1.0d0,2.0d0], fvec_test, args_test=[-6.0d0,2.0d0]
+
 integer :: info !output code of the solver : 
 !    0, improper input parameters.
 !    1, algorithm estimates that the relative error between X and the
@@ -44,6 +47,12 @@ integer :: info !output code of the solver :
 !    4, the iteration is not making good progress.
 
 
+!!!!!!!!!!!!!
+! LOGS open !
+!!!!!!!!!!!!!
+
+open(unit=30,file='../Data/Logs.log', status='new') 
+
 !!!!!!!!!!!!!!!!!!!!!!!!
 !   Initialization     ! 
 !!!!!!!!!!!!!!!!!!!!!!!!
@@ -52,11 +61,11 @@ integer :: info !output code of the solver :
 !Linear grid 
 forall(i = 1:p_Nr) r(i) = (p_R_disk - p_R_p) * float(i) / float(p_Nr) + p_R_p
 
-Write(*,*) "[MAIN] Grid generated "
+Write(30,*) "[MAIN] Grid generated "
 
 !Initialize the profiles 
 call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
-Write(*,*) "[MAIN] Guesses Initialized "
+Write(30,*) "[MAIN] Guesses Initialized "
 
 ! Write the initization in a file in table format (for astropy table use)
 open(unit=10, file='../Data/initialisation.dat',status='new')
@@ -68,7 +77,7 @@ do i = 1,p_Nr
     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
 end do 
 close(unit=10) 
-Write(*,*) "[MAIN] Guesses Written "
+Write(30,*) "[MAIN] Guesses Written "
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !      Resolution      ! 
@@ -80,11 +89,15 @@ x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 !Create the argument to be parsed in Equation_system_ms
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-Write(*,*) "[MAIN] Begining of solving "
+write(30,*) "[MAIN] Begining test function solving"
+!call hybrd1 (Test_fcn, 2, x_test, fvec_test, tol, info , 2 , args_test)
+write(30,*) "[MAIN] End of test function solving with results" , x_test, fvec_test
+
+Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
 call hybrd1 (Equation_system_ms, p_Nr*8, x, fvec, tol, info , 5*p_Nr , args)
-Write(*,*) "[MAIN] End of solving "
+Write(30,*) "[MAIN] End of solving, exit status :" , info
 !Parse the solution
 sigma = x(1 : p_Nr)
 T_mid = x(p_Nr+1 : 2*p_Nr)
@@ -106,6 +119,7 @@ do i = 1,p_Nr
     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
 end do 
 close(unit=10) 
-Write(*,*) "[MAIN] Solution Written "
+Write(30,*) "[MAIN] Solution Written "
 
+close(unit=30)
 END PROGRAM

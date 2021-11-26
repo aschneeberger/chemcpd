@@ -674,7 +674,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn, n_args
   real ( kind = rk ) wa1(n)
   real ( kind = rk ) wa2(n)
   real ( kind = rk ) x(n)
-  write(*,*) "Entering FDJAC1"
+  write(30,*) "Entering FDJAC1"
 
   epsmch = epsilon ( epsmch )
 
@@ -750,7 +750,7 @@ subroutine fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn, n_args
      end do
 
   end if
-  write(*,*) "Exiting FDJAC1"
+  write(30,*) "Exiting FDJAC1"
   return
 end
 subroutine fdjac2 ( fcn, m, n, x, fvec, fjac, ldfjac, iflag, epsfcn )
@@ -1060,7 +1060,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
   real ( kind = rk ) x(n)
   real ( kind = rk ) xnorm
   real ( kind = rk ) xtol
-  write(*,*) "Entering Hybrd"
+  write(30,*) "Entering Hybrd"
 
   epsmch = epsilon ( epsmch )
 
@@ -1133,14 +1133,14 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
 !
     iflag = 2
     call fdjac1 ( fcn, n, x, fvec, fjac, ldfjac, iflag, ml, mu, epsfcn , n_args, args )
-    Write(*,*) "  Before nfev "
+    write(30,*) "  Before nfev "
 
     nfev = nfev + msum
-    Write(*,*) "  Before Go to "
+    write(30,*) "  Before Go to "
     if ( iflag < 0 ) then
       go to 300
     end if
-    Write(*,*) "  Before Go to "
+    write(30,*) "  Before Go to "
 !  Compute the QR factorization of the jacobian.
 !
     pivot = .false.
@@ -1533,7 +1533,7 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info ,n_args , args )
   real ( kind = rk ) x(n)
   real ( kind = rk ) xtol
 
-  write(*,*) "Entering Hybrd1"
+  write(30,*) "Entering Hybrd1"
   
   if ( n <= 0 ) then
     info = 0
@@ -1556,9 +1556,7 @@ subroutine hybrd1 ( fcn, n, x, fvec, tol, info ,n_args , args )
   nprint = 0
   info = 0
   nfev = 0
-  write(*,*) "hello minpack"
   fjac(1:n,1:n) = 0.0d0
-  write(*,*) "hello minpack"
   ldfjac = n
   r(1:(n*(n+1))/2) = 0.0D+00
   lr = ( n * ( n + 1 ) ) / 2
@@ -4874,7 +4872,7 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
   real ( kind = rk ) temp
   real ( kind = rk ) wa(n)
 
-  WRITE(*,*) "Entering QRFAC"
+  write(30,*) "Entering QRFAC"
 
   epsmch = epsilon ( epsmch )
 !
@@ -4969,7 +4967,7 @@ subroutine qrfac ( m, n, a, lda, pivot, ipvt, lipvt, rdiag, acnorm )
     rdiag(j) = - ajnorm
 
   end do
-  WRITE(*,*) "Exiting QRFAC"
+  write(30,*) "Exiting QRFAC"
   return
 end
 subroutine qrsolv ( n, r, ldr, ipvt, diag, qtb, x, sdiag )
