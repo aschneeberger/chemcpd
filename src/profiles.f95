@@ -720,7 +720,7 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
     ! analitical integral results in isotherm
     zeta_a = z_add/z_s 
     !check if z_add > z_s to proceed, avoiding unphysical results 
-    if (All(z_add < z_s)) then 
+    if (All(z_add > z_s)) then 
         write(30,*) "WARNING : Unphysical situation, z_addiabatique > z_surface"
     end if 
 
@@ -981,7 +981,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     integer :: N_args                                 
     double precision , dimension(N)::  fvec , x
     DOUBLE PRECISION , DIMENSION(N_args):: args 
-    CHARACTER (len=21) :: filename
+    CHARACTER (len=22) :: filename
     
     !INTERNALS
     double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
@@ -994,7 +994,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     ! residue
     double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
 
-    write(30,*) "Entering Residue"
+    if (p_verbose)  write(30,*) "[RES] Entering Residue"
     !Parse all unknown from X vetor given by the resolution subroutine
     sigma = x(1 : p_Nr)
     T_mid = x(p_Nr+1 : 2*p_Nr)
@@ -1011,10 +1011,10 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     F_vis = args(2*p_Nr +1: 3*p_Nr)
     F_acc = args(3*p_Nr+1 : 4*p_Nr)
     r = args(4*p_Nr+1 : 5*p_Nr)
-    !write(30,*) '    Parsing complete'
+    !if (p_verbose) write(30,*) '    Parsing complete'
     !accretion rate 
     res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)
-    !write(30,*) '    res_10 complete'
+    !if (p_verbose) write(30,*) '    res_10 complete'
 
     !Surface temperature  
     call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) !compute mean opcity 
@@ -1022,48 +1022,53 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
     res_17 = T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
-    !write(30,*) '    res_17 complete'
+    if (p_verbose) write(30,*) '    res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
     res_23 = rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_s,omegak)
-    !write(30,*) '    res_23 complete'
+    if (p_verbose) write(30,*) '    res_23 complete'
 
     res_36 = rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid)
-    !write(30,*) '    res_36 complete'
+    if (p_verbose) write(30,*) '    res_36 complete'
 
     !optical depth computation 
     res_24 = 2.0d0/3.0d0 - optical_depth(p_Nr,rho_s,kappa_p,z_s,omegak,T_s)
-    !write(30,*) '    res_24 complete'
+    if (p_verbose) write(30,*) '    res_24 complete'
 
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     res_31 = temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)
-    !write(30,*) '    res_31 complete'
+    if (p_verbose) write(30,*) '    res_31 complete'
 
     !addiabatique to isotherm transition altitude 
     res_37 = z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)
-    !write(30,*) '    res_37 complete'
+    if (p_verbose) write(30,*) '    res_37 complete'
 
     !surface density 
     res_39 = sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)
-    !write(30,*) '    res_39 complete'
+    if (p_verbose) write(30,*) '    res_39 complete'
 
     ! concatenate everyting 
     fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
-    !write(30,*) '    Serelizing complete'
+    if (p_verbose) write(30,*) '   [RES] Serelizing complete'
+    
+    !Every 500 calls, write an intermediate file for debugging
 
-    ! !write(filename,'(a,I4.4,a)') "../Data/Inter",r_ncalls,'.dat'
-    ! !write(30,*) '    Writing intermediate file'
-    ! open(unit=20, file=filename,status='new')
-    ! !write(20,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
-    
-    
-    ! do i = 1,p_Nr 
-    !     write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-    !     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-    ! end do 
-    ! close(unit=20) 
-    write(30,*) "Exiting Residue"
+    if ( modulo(r_ncalls, p_inter_rate) == 0) then 
+        write(filename,'(a,I5.5,a)') "../Data/Inter",r_ncalls,'.dat'
+        if (p_verbose) write(30,*) '    Writing intermediate file'
+        open(unit=20, file=filename,status='new')
+        write(20,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+        
+        
+        do i = 1,p_Nr 
+            write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+            &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+        end do 
+        close(unit=20) 
+    end if 
+
+    if (p_verbose) write(30,*) "[RES] Exiting Residue"
     r_ncalls = r_ncalls+1
 end subroutine 
 

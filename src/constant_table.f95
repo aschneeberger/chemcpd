@@ -37,7 +37,21 @@ module MODCTE
 
 USE PHYCTE
 implicit none 
- 
+
+!-------------------------------!
+! Output and verbose parameters !
+!-------------------------------!
+
+! If True, verbose every actions 
+! that the code make, ie entering and exiting subroutine 
+! read and write of file 
+logical, parameter :: p_verbose = .false.
+
+! Rate at wich intermediate solution files are 
+! outputed. Files are writted from Residue subroutine
+! every p_inter_rate calls
+integer, parameter :: p_inter_rate = 500
+
 
 !---------------------
 ! Physical parameters 
@@ -68,7 +82,8 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 1000 ! number of point in the r grid 
+integer, parameter :: p_Nr = 500 ! number of point in the r grid 
+
 
 
 !--------------------
