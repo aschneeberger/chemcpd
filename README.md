@@ -8,5 +8,6 @@ The model will proceed in three steps:
 
 Each step can be precomputed independantly from the others 
 
-Currently the model is tested with the python file `poc.py` and its test unit tests `test_poc.py` 
-$ \int_{-\inf}^{+\inf} x^2 dx $ 
+The data explorer system is present in the folder `posprocessing`. It is composed of a parser and a plotter to explore the solution and intermediary files. 
+
+The physical explenation is in the wiki of the repo. 
