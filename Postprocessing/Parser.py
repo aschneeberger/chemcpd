@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from astropy.table import Table
 import os 
+import astropy.constants as cte
 
 DIRECTORY  = '../Data' 
 FILENAME = 'initialisation.dat'
@@ -33,7 +34,7 @@ def control_plot(data_table,key,xlog=False,ylog=False) :
         raise os.error("Asked Column not present in table, change key variable to an existing table entry ")
 
     # Do the plot 
-    plt.plot(data_table['r'],data_table[key])
+    plt.plot(data_table['r']/cte.R_jup.value,data_table[key])
 
     # change to log scale if needed 
     if xlog :
@@ -55,7 +56,12 @@ def control_plot(data_table,key,xlog=False,ylog=False) :
     plt.close()
 
 
-
-table = Parse(DIRECTORY,FILENAME)
-for key in table.colnames :
-    control_plot(table,key,xlog=True)
+if __name__ == '__main__':
+    fnames = np.array(os.listdir(DIRECTORY),dtype='str')
+    for elem in fnames :
+        if not '.dat' in elem :
+            fnames = np.delete(fnames,np.where(fnames==elem))
+    print(fnames)
+    table = Parse(DIRECTORY,FILENAME)
+    for key in table.colnames :
+        control_plot(table,key,xlog=True)

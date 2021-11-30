@@ -63,7 +63,7 @@ open(unit=30,file='../Data/Logs.log', status='new')
 
 
 !Linear grid 
-forall(i = 1:p_Nr) r(i) = (p_R_disk - p_R_p) * float(i) / float(p_Nr) + p_R_p
+forall(i = 1:p_Nr) r(i) = (p_R_grid - p_R_p*2.0d0) * float(i) / float(p_Nr) + p_R_p*2.0d0
 
 Write(30,*) "[MAIN] Grid generated "
 

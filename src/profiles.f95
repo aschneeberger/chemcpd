@@ -718,11 +718,8 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
     end do
 
     ! analitical integral results in isotherm
+
     zeta_a = z_add/z_s 
-    !check if z_add > z_s to proceed, avoiding unphysical results 
-    if (All(z_add > z_s)) then 
-        write(30,*) "WARNING : Unphysical situation, z_addiabatique > z_surface"
-    end if 
 
     integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
 
@@ -872,9 +869,9 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
     ! end do 
     
     !computation of z_add 
-    z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(T_mid - T_s)/omegak
+    z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(max(T_mid - T_s,0.0d0))/omegak
 
-    z_s = z_add*1.2d0
+    z_s = z_add*2.0d0
     !z_add = min(z_add,z_s/1.2d0) ! ensure the physical validity of z_s / z_add guesses, since z_add<z_s
 
     ! computation of rho_s 
@@ -1011,10 +1008,36 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     F_vis = args(2*p_Nr +1: 3*p_Nr)
     F_acc = args(3*p_Nr+1 : 4*p_Nr)
     r = args(4*p_Nr+1 : 5*p_Nr)
-    !if (p_verbose) write(30,*) '    Parsing complete'
+   
+    if (p_verbose) write(30,*) '[RES] Parsing complete'
+    
+    ! Check if physical conditions are respected and value biased if not to 
+    ! Ensure results stablilty
+    if (p_verbose) write(30,*) '[RES] Physical validity check'
+
+    if (ALL(z_add > z_s)) then 
+        write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
+        z_add = min(z_add,z_s)
+    end if 
+
+    if (ALL(T_s < T_mid)) then 
+        write(30,*) '[RES] WARNING Unphysical occurance of T_s<T_m, changing T_s to max(T_s,T_m)'
+        T_s = max(T_s,T_mid)
+    end if
+
+    if (ALL(rho_mid < rho_add)) then 
+        write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
+        rho_mid = max(rho_mid,rho_add)
+    end if  
+
+    if (ALL(rho_add < rho_s)) then 
+        write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
+        rho_add = max(rho_add,rho_s)
+    end if 
+
     !accretion rate 
     res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)
-    !if (p_verbose) write(30,*) '    res_10 complete'
+    if (p_verbose) write(30,*) '[RES] res_10 complete'
 
     !Surface temperature  
     call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) !compute mean opcity 
@@ -1022,35 +1045,35 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
     res_17 = T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
-    if (p_verbose) write(30,*) '    res_17 complete'
+    if (p_verbose) write(30,*) '[RES] res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
     res_23 = rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_s,omegak)
-    if (p_verbose) write(30,*) '    res_23 complete'
+    if (p_verbose) write(30,*) '[RES] res_23 complete'
 
     res_36 = rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid)
-    if (p_verbose) write(30,*) '    res_36 complete'
+    if (p_verbose) write(30,*) '[RES] res_36 complete'
 
     !optical depth computation 
     res_24 = 2.0d0/3.0d0 - optical_depth(p_Nr,rho_s,kappa_p,z_s,omegak,T_s)
-    if (p_verbose) write(30,*) '    res_24 complete'
+    if (p_verbose) write(30,*) '[RES] res_24 complete'
 
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     res_31 = temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)
-    if (p_verbose) write(30,*) '    res_31 complete'
+    if (p_verbose) write(30,*) '[RES] res_31 complete'
 
     !addiabatique to isotherm transition altitude 
     res_37 = z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)
-    if (p_verbose) write(30,*) '    res_37 complete'
+    if (p_verbose) write(30,*) '[RES] res_37 complete'
 
     !surface density 
     res_39 = sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)
-    if (p_verbose) write(30,*) '    res_39 complete'
+    if (p_verbose) write(30,*) '[RES] res_39 complete'
 
     ! concatenate everyting 
     fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
-    if (p_verbose) write(30,*) '   [RES] Serelizing complete'
+    if (p_verbose) write(30,*) '[RES] Serelizing complete'
     
     !Every 500 calls, write an intermediate file for debugging
 

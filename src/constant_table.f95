@@ -45,7 +45,7 @@ implicit none
 ! If True, verbose every actions 
 ! that the code make, ie entering and exiting subroutine 
 ! read and write of file 
-logical, parameter :: p_verbose = .false.
+logical, parameter :: p_verbose = .true.
 
 ! Rate at wich intermediate solution files are 
 ! outputed. Files are writted from Residue subroutine
@@ -82,7 +82,7 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 500 ! number of point in the r grid 
+integer, parameter :: p_Nr = 10 ! number of point in the r grid 
 
 
 
@@ -94,8 +94,9 @@ double precision , parameter :: p_M_p = 300.0 * c_M_earth             ! planet m
 double precision , parameter :: p_L_p = 1.0d-4 * c_L_sun              ! planet luminosity [W] 
 double precision , parameter :: p_R_p = 1.4 * c_R_jup               ! planet radius [m]
 double precision , parameter :: p_M_dot = 4.0d-6 * c_M_earth/c_year   ! Accretion rate [Kg.s-1] 
-double precision , parameter :: p_R_hill = 5.0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
-double precision , parameter :: p_R_disk = p_R_hill / 5.0           ! Disk size [m]
+double precision , parameter :: p_R_hill = 5.0d0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
+double precision , parameter :: p_R_disk =  p_R_hill / 5.0           ! Disk size [m]
 double precision , parameter :: p_L = 1.0d0 - sqrt(p_R_p/p_R_disk)          ! angular momentum transfert coeficient 
-  
+double precision , parameter :: p_R_grid  = p_R_disk / 500.0d0        ! Size of the model 
+
 end module 

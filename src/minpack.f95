@@ -1366,7 +1366,7 @@ subroutine hybrd ( fcn, n, x, fvec, xtol, maxfev, ml, mu, epsfcn, diag, mode, &
           info = 3
         end if
 
-        if ( nslow2 == 5 ) then
+        if ( nslow2 == 6 ) then
           info = 4
         end if
 
