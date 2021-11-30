@@ -2,7 +2,12 @@
 /__pycache__
 /.vscode
 .pytest_cache
-src/chemcpd.exe
+*.o
+*.exe
+*.mod
+*.out
+*.png 
 *.npy
-*.png
-.DS_Store
+*.dat
+*.log
+/Data
