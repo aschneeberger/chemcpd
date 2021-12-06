@@ -1,6 +1,6 @@
 .PHONY : clean all chemcpd.exe
 
-FLAG = -O2 -fbounds-check
+FLAG = -O2 -fbounds-check -fbacktrace 
 OBJ = quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
 
 all: chemcpd.exe
