@@ -33,4 +33,4 @@ echo 'ok'
 
 export OMP_NUM_THREAD=4
 
-srun --ntasks 1 ./src/chemcpd.exe
+srun --ntasks 1 /home/aschneeberger/chemcpd/src/chemcpd.exe
