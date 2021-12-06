@@ -61,15 +61,43 @@ open(unit=30,file='../Data/Logs.log', status='new')
 !   Initialization     ! 
 !!!!!!!!!!!!!!!!!!!!!!!!
 
+!Check if asked grid radius is valid
+! else it will not continue  further and output an error
+if (p_R_grid < 10d0*p_R_p) then 
+    write(30,*)'[MAIN] ERROR Asked grid size is to small, is must be at least 10 time the planet radius'
+    write(30,*) '   Asked grid size:', p_R_grid, 'Planet Radius:', p_R_p
+    stop
+end if 
 
-!Linear grid 
-forall(i = 1:p_Nr) r(i) = (p_R_grid - p_R_p*2.0d0) * float(i) / float(p_Nr) + p_R_p*2.0d0
+!Grid construction 
+
+if (p_gtype == 1) then  
+    !Linear grid
+
+    Write(30,*) '[MAIN] Construction of Linear grid between :' , p_R_p*2.0d0, 'and'&
+    &, p_R_grid,'with',p_Nr,'points'
+
+    forall(i = 1:p_Nr) r(i) = (p_R_grid - p_R_p*2.0d0) * float(i) / float(p_Nr) + p_R_p*2.0d0
+
+else if (p_gtype == 2) then
+    !Log Grid 
+
+    Write(30,*) '[MAIN] Construction of Log grid between :' , p_R_p*2.0d0/c_R_jup, 'and'&
+    &, p_R_grid/c_R_jup,'with',p_Nr,'points'
+
+    forall(i = 1:p_Nr) r(i) = 2.0d0*p_R_p * exp(float(i-1)/float(p_Nr-1) * log(p_R_grid/(2.0d0*p_R_p)) )
+else 
+    ! if other values, unknown grid type, output error and stop
+    write(30,*) '[MAIN] ERROR Unknown gride type, gtype must be either 1 or 2'
+    stop
+end if 
 
 Write(30,*) "[MAIN] Grid generated "
 
 !Initialize the profiles 
 call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
 Write(30,*) "[MAIN] Guesses Initialized "
+if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c_R_jup , 'R_jup'
 
 ! Write the initization in a file in table format (for astropy table use)
 open(unit=10, file='../Data/initialisation.dat',status='new')

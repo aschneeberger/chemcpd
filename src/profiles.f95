@@ -24,6 +24,8 @@ USE MODCTE
 
 implicit none
 
+
+
 contains
 subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 ! Compute the mean planck opacity table as function of the temprature only, 
@@ -112,6 +114,7 @@ USE PARTFUN
 
 
 implicit none 
+integer :: m_ncalls=1
 
 contains 
 
@@ -154,7 +157,7 @@ function ang_mom_factor(N,r, R_c)
     elsewhere  
         ang_mom_factor = 0.8d0 * sqrt(R_c/r) - sqrt(p_R_p/r) - 0.8d0 * sqrt(R_c/p_R_disk) + sqrt(p_R_p/p_R_disk) 
    
-    end where 
+    end where
 
 
 end function 
@@ -324,10 +327,14 @@ function flux_planet(N,r,z_s)
     !Internal vars 
     double precision , dimension(N) :: eps , eta    !Disk curvature parameters 
     double precision , dimension(N) :: dzdr        ! z_s derivative 
+
+
     !Central difference derivative of z_s 
-    dzdr(1) = 0.0d0
     dzdr(2:N-1) = (z_s(1:N-2) - z_s(3:N)) / (r(1:N-2) - r(3:N)) 
+    dzdr(1) = dzdr(2)
     dzdr(N) = dzdr(N-1)
+
+    
 
     !Disk curvature parameters 
     eps = atan( (4.0d0/(3.0d0*c_pi) * p_R_p) / sqrt( r*r + z_s*z_s ))
@@ -335,6 +342,7 @@ function flux_planet(N,r,z_s)
 
     !Planet energy flux on disk 
     flux_planet = p_L_p * sin(eps  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
+    m_ncalls = m_ncalls+1
 
 end function
 
@@ -508,7 +516,7 @@ function accretion_rate(N,sigma,T_m,omegak,cap_lambda)
 
 end function
 
-function rho_add_23(N,rho_s,z_s,z_add,T_s,omegak) 
+function rho_add_23(N,rho_s,z_s,z_add,T_mid,omegak) 
 ! In the equation set there are two independent method to compute the 
 ! gas density at the altitude of transition between addiabatique and 
 ! isothermal part of the disk. The first is from equation 23 of makalkin 
@@ -520,7 +528,7 @@ function rho_add_23(N,rho_s,z_s,z_add,T_s,omegak)
 ! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
 ! z_s(N) : double precision : altitude of the photosphere [m] 
 ! z_add(N) : double precision : altitude of the addiabatique to isothermal transition [m]
-! T_s(N) : double precision : Temperature at photosphere surface [K] 
+! T_mid(N) : double precision : Temperature at midplane [K] 
 ! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
 !
 !-------
@@ -536,16 +544,30 @@ function rho_add_23(N,rho_s,z_s,z_add,T_s,omegak)
     double precision , dimension(N) :: z_s  
     double precision , dimension(N) :: z_add  
     double precision , dimension(N) :: rho_add_23
-    double precision , dimension(N) :: T_s
+    double precision , dimension(N) :: T_mid
     double precision , dimension(N) :: omegak
     
     ! Internal vars 
     double precision , dimension(N) :: h_s 
+    character (len=50) :: filename                  !fname 
+    integer :: i ! index var
 
-    h_s = gas_scale_height(N,T_s,omegak)
+    h_s = gas_scale_height(N,T_mid,omegak)
 
     rho_add_23 = rho_s * exp( (c_gamma / 2.0d0) * ( z_s*z_s - z_add*z_add ) / (h_s*h_s) )
 
+    ! Write debug file of rho_add_23
+    ! if ( modulo(m_ncalls, p_inter_rate) == 0) then
+    !     !create fname
+    !     write(filename,'(a,I5.5,a)') "../Data/rho_add_23_",m_ncalls,'.dat'
+    !     open(unit=50, file=filename,status='new')
+    !     write(50,*) 'rho_add_23 z_s² z_add² h_s² '
+    !     do i=1,p_Nr
+    !         write(50,*) rho_add_23(i),z_s(i)*z_s(i),z_add(i)*z_add(i),h_s(i)*h_s(i)
+    !     end do 
+    !     close(unit=50)
+    ! end if 
+    
 end function 
 
 function rho_add_36(N,rho_mid,T_s,T_mid) 
@@ -978,7 +1000,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     integer :: N_args                                 
     double precision , dimension(N)::  fvec , x
     DOUBLE PRECISION , DIMENSION(N_args):: args 
-    CHARACTER (len=22) :: filename
+    CHARACTER (len=50) :: filename
     
     !INTERNALS
     double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
@@ -990,7 +1012,9 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     double precision , dimension(p_Nr) :: cap_lambda, omegak, F_vis, F_acc, r
     ! residue
     double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
-
+    double precision , dimension(p_Nr) :: test_temp_surf
+    
+    
     if (p_verbose)  write(30,*) "[RES] Entering Residue"
     !Parse all unknown from X vetor given by the resolution subroutine
     sigma = x(1 : p_Nr)
@@ -1020,11 +1044,6 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
         z_add = min(z_add,z_s)
     end if 
 
-    if (ALL(T_s < T_mid)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of T_s<T_m, changing T_s to max(T_s,T_m)'
-        T_s = max(T_s,T_mid)
-    end if
-
     if (ALL(rho_mid < rho_add)) then 
         write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
         rho_mid = max(rho_mid,rho_add)
@@ -1036,7 +1055,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     end if 
 
     !accretion rate 
-    res_10 = p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)
+    res_10 = (p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)) / p_M_dot
     if (p_verbose) write(30,*) '[RES] res_10 complete'
 
     !Surface temperature  
@@ -1044,14 +1063,14 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
-    res_17 = T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
+    res_17 = (T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet) ) /T_s
     if (p_verbose) write(30,*) '[RES] res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
-    res_23 = rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_s,omegak)
+    res_23 = (rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_mid,omegak)) / rho_add
     if (p_verbose) write(30,*) '[RES] res_23 complete'
 
-    res_36 = rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid)
+    res_36 = (rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid) ) / rho_add
     if (p_verbose) write(30,*) '[RES] res_36 complete'
 
     !optical depth computation 
@@ -1060,33 +1079,58 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
 
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
-    res_31 = temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)
+    
+    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)&
+    &/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
     !addiabatique to isotherm transition altitude 
-    res_37 = z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)
+    res_37 = (z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)) / z_add
     if (p_verbose) write(30,*) '[RES] res_37 complete'
 
     !surface density 
-    res_39 = sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)
+    res_39 = (sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)) / sigma
     if (p_verbose) write(30,*) '[RES] res_39 complete'
 
     ! concatenate everyting 
     fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
     if (p_verbose) write(30,*) '[RES] Serelizing complete'
     
-    !Every 500 calls, write an intermediate file for debugging
+    !Every p_inter_rate calls, write intermediates files for debugging
 
     if ( modulo(r_ncalls, p_inter_rate) == 0) then 
-        write(filename,'(a,I5.5,a)') "../Data/Inter",r_ncalls,'.dat'
-        if (p_verbose) write(30,*) '    Writing intermediate file'
+        !Write the temporary solution 
+        write(filename,'(a,I5.5,a)') "../Data/sol_int",r_ncalls,'.dat'
+        
+        test_temp_surf = temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
+
+        if (p_verbose) write(30,*) '    Writing intermediate sol file'
+        
         open(unit=20, file=filename,status='new')
-        write(20,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+        !Write header 
+        write(20,*) 'r cap_lambda omegak F_vis F_acc F_planet T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p&
+        & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
+        
+        do i = 1,p_Nr 
+            write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),F_planet(i),T_mid(i),T_s(i) &
+            &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)&
+            &,(T_mid(i)**(5.0d0-beta(i)) - T_s(i)**(4.0d0-beta(i)) * T_mid(i))&
+            &,test_temp_surf(i)
+        end do 
+        close(unit=20) 
+
+        !write the residues values
+        write(filename,'(a,I5.5,a)') "../Data/res_int",r_ncalls,'.dat'
+        if (p_verbose) write(30,*) '    Writing intermediate res file'
+        open(unit=20, file=filename,status='new')
+        write(20,*) 'res_10 res_17 res_23 res_24 res_31 res_36 res_37 res_39&
+        & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
         
         
         do i = 1,p_Nr 
-            write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-            &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+            write(20,*) res_10(i),res_17(i),res_23(i),res_24(i),res_31(i),res_36(i),res_37(i),res_39(i)&
+            &,(T_mid(i)**(5.0d0-beta(i)) - T_s(i)**(4.0d0-beta(i)) * T_mid(i))&
+            &,test_temp_surf(i)
         end do 
         close(unit=20) 
     end if 

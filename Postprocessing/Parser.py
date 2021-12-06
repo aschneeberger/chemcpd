@@ -4,6 +4,7 @@ Lib to parse output files from the model into astropy table.
 @mail : antoine.schneeberger@lam.fr
 """
 
+import sys 
 import numpy as np 
 import matplotlib.pyplot as plt 
 from astropy.table import Table
@@ -11,7 +12,7 @@ import os
 import astropy.constants as cte
 
 DIRECTORY  = '../Data' 
-FILENAME = 'initialisation.dat'
+FILENAME = sys.argv[1] 
 
 def Parse(dir,fname) :
     """
@@ -23,7 +24,7 @@ def Parse(dir,fname) :
 
     return data_table
 
-def control_plot(data_table,key,xlog=False,ylog=False) :
+def control_plot(data_table,key,xlog=False,ylog=False,r=None) :
     """
     Plot a control graph and save it in ag rpah directory as a subdirectory of 
     the data directory 
@@ -33,8 +34,17 @@ def control_plot(data_table,key,xlog=False,ylog=False) :
     if not (key in data_table.colnames) :
         raise os.error("Asked Column not present in table, change key variable to an existing table entry ")
 
+
+    # If no external r given, take the one in the table 
+    if r is None:
+        #Verify if there is a column r 
+        if not('r' in data_table.colnames):
+            raise os.error("There is no radius column in the table and radius array was not provided")
+        
+        r = data_table['r']
+   
     # Do the plot 
-    plt.plot(data_table['r']/cte.R_jup.value,data_table[key])
+    plt.plot(r/cte.R_jup.value,data_table[key])
 
     # change to log scale if needed 
     if xlog :
@@ -49,19 +59,25 @@ def control_plot(data_table,key,xlog=False,ylog=False) :
     # if does not exist creat it 
     list_dir = os.listdir(DIRECTORY) 
     if not ('Graph' in list_dir) :
-        os.mkdir(DIRECTORY+'/'+'Graph')
+        os.mkdir(DIRECTORY+'/Graph')
+    if not (FILENAME[:-4] in os.listdir(DIRECTORY+'/Graph')):
+        os.mkdir(DIRECTORY+'/Graph/' + FILENAME[:-4])
+            
 
     # Save the figure in the dedicated directory 
-    plt.savefig(DIRECTORY + '/' +'Graph/control_'+ key +'.png', dpi=300)
+    plt.savefig(DIRECTORY + '/Graph/'+ FILENAME[:-4]+'/control_'+ key +'.png', dpi=300)
     plt.close()
 
 
 if __name__ == '__main__':
-    fnames = np.array(os.listdir(DIRECTORY),dtype='str')
-    for elem in fnames :
-        if not '.dat' in elem :
-            fnames = np.delete(fnames,np.where(fnames==elem))
-    print(fnames)
+
     table = Parse(DIRECTORY,FILENAME)
-    for key in table.colnames :
-        control_plot(table,key,xlog=True)
+    #If there is r in the colnames of the file, use its radius 
+    if 'r' in table.colnames :
+        for key in table.colnames :
+            control_plot(table,key,xlog=True)
+    #For other files such as debbug files or res files, use the radius from initialisation
+    else :
+        r_init = Parse(DIRECTORY,'initialisation.dat')['r']
+        for key in table.colnames :
+            control_plot(table,key,xlog=True,r=r_init)
