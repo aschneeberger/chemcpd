@@ -13,7 +13,8 @@ USE ENV
 IMPLICIT NONE 
 
 !The working path and data directory
-character (len=:), allocatable :: PATH, DATAPATH, logfile
+character (len=200):: PATH
+character(len=:) , ALLOCATABLE:: DATAPATH, logfile
 
 !Loop variables 
 integer :: i
@@ -59,9 +60,14 @@ integer :: info !output code of the solver :
 !!!!!!!!!!!!!!!!
 
 !get the current working directy
+write(*,*) 'before getcwd'
 call getcwd(PATH) 
 !Create the data save path from the working directory and the data dirclearclectory name 
-datapath =  PATH//"/"//p_datadir
+write(*,*) 'before concatenation'
+
+datapath =  Trim(PATH)//"/"//Trim(p_datadir)
+
+write(*,*) 'before listdir', datapath
 
 path = listdir(DATAPATH)
 stop

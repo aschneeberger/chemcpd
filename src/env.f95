@@ -58,9 +58,12 @@ Module ENV
         CHARACTER(len=:), ALLOCATABLE :: path        
         CHARACTER(len=:), ALLOCATABLE :: listdir 
 
-        !The strategie is to write the ouput ofa ls command to a file and then read it
+        !The strategie is to write the ouput ofa ls command to a tmp file and then read it
+        write(*,*) path
+        call execute_command_line("ls "//Trim(path)//" >> listdir.tmp")
 
-        call execute_command_line("ls "//path//" >> listdir.txt")
+        open(unit=60,file="lisdir.tmp",status='read')
+
     end function 
 
 end module
