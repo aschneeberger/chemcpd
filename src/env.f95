@@ -18,27 +18,45 @@ Module ENV
         ! It will initialize the data path.
         
         ! INTERNALS
-        character(len=:), ALLOCATABLE :: path       ! Current working path  
+        character(len=255) :: path       ! Current working path  
         character(len=:), ALLOCATABLE :: datapath   ! Generated datapath
+        character(len=:), ALLOCATABLE :: dir_elems   ! Generated datapath
         
         ! Get the working directory 
         call getcwd(path) 
 
+        !Add to the path the relative area where all data folders are stored
+        path =trim(path)//"/../"
+
         ! From the working directory and the asked data directory name, 
         ! create the absolute data path 
-        datapath = path//"/"//Trim(p_datadir)
-        
-        ! Create the data directory by a call to the terminal 
-        call system('mkdir '//DATAPATH)
+        datapath = Trim(path)//Trim(p_datadir)
+
+        ! Check if p_datadir already exist
+        dir_elems = listdir(path)
+
+        ! the index method return 0 if there is no folder of the name p_datadir 
+        if (index(dir_elems,Trim(p_datadir)) == 0) then 
+
+            ! Create the data directory if it does not exist 
+            ! by a call to the terminal 
+            call execute_command_line('mkdir '//DATAPATH)
+
+        else 
+
+            ! Verify data files are present in p_datadir. If there are,
+            ! The programme Stop and send an Error.
+            dir_elems = listdir(datapath) 
+
+            if (index(dir_elems,".dat") /= 0) stop '[ENV ERROR] Data files already present in the data directory'
+
+        end if 
+
+        ! Setup the env_datapath variable in the module
+        env_datapath = datapath
 
     end subroutine 
 
-    subroutine get_datapath()
-        !Get the datapath 
-        
-        
-
-    end subroutine 
 
     function listdir(path) 
         !Function that return a string containing all directories and files
@@ -52,10 +70,10 @@ Module ENV
         !OUTPUT
         !------
         !
-        ! listdir : character*n : string with all the elements in the path
+        ! listdir : character*n : string with all the elements in the path sparated by a comma
 
         !IN/OUT
-        CHARACTER(len=:), ALLOCATABLE :: path  
+        CHARACTER(len=*) :: path  !The size of path is inferred from the input var 
         CHARACTER(len=:) , ALLOCATABLE :: listdir      
         CHARACTER(len=255) :: file
 

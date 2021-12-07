@@ -59,31 +59,16 @@ integer :: info !output code of the solver :
 ! Env creation !
 !!!!!!!!!!!!!!!!
 
-!get the current working directy
-write(*,*) 'before getcwd'
-call getcwd(PATH) 
-!Create the data save path from the working directory and the data dirclearclectory name 
-write(*,*) 'before concatenation'
+call init_env()
 
-datapath =  Trim(PATH)//"/"//Trim(p_datadir)
-
-write(*,*) 'before listdir', datapath
-
-path = listdir(DATAPATH)
-stop
-write(*,*) datapath
-!Create the directory
-call system('mkdir '//DATAPATH)
 
 !!!!!!!!!!!!!
 ! LOGS open !
 !!!!!!!!!!!!!
 
 !creation of the log file in datapath
-write(logfile,'(a)') DATAPATH//"/logs.log"
 
-
-open(unit=30,file=Trim(logfile), status='new')
+open(unit=30,file=trim(env_datapath)//'/logs.log', status='new')
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !   Initialization     ! 
@@ -128,7 +113,7 @@ Write(30,*) "[MAIN] Guesses Initialized "
 if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c_R_jup , 'R_jup'
 
 ! Write the initization in a file in table format (for astropy table use)
-open(unit=10, file='../Data/initialisation.dat',status='new')
+open(unit=10, file=Trim(env_datapath)//'/initialisation.dat',status='new')
 
 write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
 
@@ -170,7 +155,7 @@ rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
 !Write the solution in a file
 
-open(unit=10, file='../Data/Solution.dat',status='new')
+open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
 
 write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
 

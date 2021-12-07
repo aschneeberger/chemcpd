@@ -913,6 +913,7 @@ USE MINPACK
 USE DSKPHY
 USE MODCTE
 USE PHYCTE
+USE ENV
 
 IMPLICIT NONE 
 
@@ -1000,7 +1001,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     integer :: N_args                                 
     double precision , dimension(N)::  fvec , x
     DOUBLE PRECISION , DIMENSION(N_args):: args 
-    CHARACTER (len=50) :: filename
+    CHARACTER (len=255) :: filename
     
     !INTERNALS
     double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
@@ -1100,13 +1101,13 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
 
     if ( modulo(r_ncalls, p_inter_rate) == 0) then 
         !Write the temporary solution 
-        write(filename,'(a,I5.5,a)') "../Data/sol_int",r_ncalls,'.dat'
+        write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",r_ncalls,'.dat'
         
         test_temp_surf = temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
 
         if (p_verbose) write(30,*) '    Writing intermediate sol file'
         
-        open(unit=20, file=filename,status='new')
+        open(unit=20, file=Trim(filename),status='new')
         !Write header 
         write(20,*) 'r cap_lambda omegak F_vis F_acc F_planet T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p&
         & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
@@ -1120,12 +1121,13 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
         close(unit=20) 
 
         !write the residues values
-        write(filename,'(a,I5.5,a)') "../Data/res_int",r_ncalls,'.dat'
+        write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/res_int",r_ncalls,'.dat'
         if (p_verbose) write(30,*) '    Writing intermediate res file'
-        open(unit=20, file=filename,status='new')
+        
+        open(unit=20, file=Trim(filename),status='new')
+        
         write(20,*) 'res_10 res_17 res_23 res_24 res_31 res_36 res_37 res_39&
         & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
-        
         
         do i = 1,p_Nr 
             write(20,*) res_10(i),res_17(i),res_23(i),res_24(i),res_31(i),res_36(i),res_37(i),res_39(i)&
