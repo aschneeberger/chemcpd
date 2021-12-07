@@ -26,7 +26,6 @@ Module ENV
         call getcwd(path) 
 
         !Add to the path the relative area where all data folders are stored
-        path =trim(path)//"/../"
 
         ! From the working directory and the asked data directory name, 
         ! create the absolute data path 
