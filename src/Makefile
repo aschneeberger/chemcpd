@@ -5,8 +5,8 @@ OBJ = quadpack.o minpack.o constant_table.o particular_functions.o profiles.o
 
 all: chemcpd.exe
 
-chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
-	gfortran $(FLAG) main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o -o chemcpd.exe 
+chemcpd.exe : main.f95  quadpack.o minpack.o constant_table.o particular_functions.o profiles.o env.o
+	gfortran $(FLAG) main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o -o chemcpd.exe 
 	make clean
 	make reset
 
@@ -25,6 +25,9 @@ constant_table.o : constant_table.f95
 
 particular_functions.o : particular_functions.f95
 	gfortran -c particular_functions.f95
+
+env.o : env.f95
+	gfortran -c env.f95
 
 clean : 
 	rm *.o *.mod *.dat

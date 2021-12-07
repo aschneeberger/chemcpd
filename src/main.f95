@@ -8,9 +8,12 @@ USE MODCTE
 USE DSKPHY
 USE QUADPACK
 USE PARTFUN
+USE ENV
 
 IMPLICIT NONE 
 
+!The working path and data directory
+character (len=:), allocatable :: PATH, DATAPATH, logfile
 
 !Loop variables 
 integer :: i
@@ -51,11 +54,30 @@ integer :: info !output code of the solver :
 !    4, the iteration is not making good progress.
 
 
+!!!!!!!!!!!!!!!!
+! Env creation !
+!!!!!!!!!!!!!!!!
+
+!get the current working directy
+call getcwd(PATH) 
+!Create the data save path from the working directory and the data dirclearclectory name 
+datapath =  PATH//"/"//p_datadir
+
+path = listdir(DATAPATH)
+stop
+write(*,*) datapath
+!Create the directory
+call system('mkdir '//DATAPATH)
+
 !!!!!!!!!!!!!
 ! LOGS open !
 !!!!!!!!!!!!!
 
-open(unit=30,file='../Data/Logs.log', status='new') 
+!creation of the log file in datapath
+write(logfile,'(a)') DATAPATH//"/logs.log"
+
+
+open(unit=30,file=Trim(logfile), status='new')
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !   Initialization     ! 
