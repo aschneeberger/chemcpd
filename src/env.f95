@@ -55,15 +55,36 @@ Module ENV
         ! listdir : character*n : string with all the elements in the path
 
         !IN/OUT
-        CHARACTER(len=:), ALLOCATABLE :: path        
-        CHARACTER(len=:), ALLOCATABLE :: listdir 
+        CHARACTER(len=:), ALLOCATABLE :: path  
+        CHARACTER(len=:) , ALLOCATABLE :: listdir      
+        CHARACTER(len=255) :: file
+
+
+        !INTERNALS
+        integer :: stat !temp file reading status
 
         !The strategie is to write the ouput ofa ls command to a tmp file and then read it
         write(*,*) path
-        call execute_command_line("ls "//Trim(path)//" >> listdir.tmp")
+        call execute_command_line("ls "//Trim(path)//" >> "//Trim(path)//"/listdir.tmp")
 
-        open(unit=60,file="lisdir.tmp",status='read')
+        !Open the listdir.tmp file 
+        open(unit=70,file=Trim(path)//"/listdir.tmp",status='old',action='read')
 
+        !Parse the files in a character array 
+        do   
+            read(70,'(A)',iostat=stat) file
+            !verify if we are at end of file, if so the loop stop
+            IF(IS_IOSTAT_END(stat)) exit
+
+            !concatenate all files with a delimiter 
+            listdir=listdir//Trim(file)//','
+
+        end do  
+        close(unit=70)
+
+        !garbage collection, the tmp file is not needed anymore
+        call execute_command_line("rm "//Trim(path)//"/listdir.tmp")
+        
     end function 
 
 end module
