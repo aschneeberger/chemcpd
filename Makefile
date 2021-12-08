@@ -1,6 +1,6 @@
 .PHONY : clean all chemcpd.exe
 
-FLAG = -fbounds-check -fbacktrace -g
+FLAG = -fbounds-check -fbacktrace -g -ffpe-trap=zero,invalid,overflow,underflow
 OBJ = quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
 DIR = ./src
 
@@ -37,4 +37,4 @@ mrproper : clean
 	rm chemcpd.exe
 
 reset : 
-	rm -rf ../Data/*
+	rm -rf ./Data/*

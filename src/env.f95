@@ -29,7 +29,7 @@ Module ENV
 
         ! From the working directory and the asked data directory name, 
         ! create the absolute data path 
-        datapath = Trim(path)//Trim(p_datadir)
+        datapath = Trim(path)//"/"//Trim(p_datadir)
 
         ! Check if p_datadir already exist
         dir_elems = listdir(path)
