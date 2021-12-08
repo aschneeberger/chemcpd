@@ -9,7 +9,7 @@ Module ENV
 
     implicit none 
 
-    CHARACTER (len=:), allocatable :: env_path, env_datapath 
+    CHARACTER (len=:), allocatable ::  env_datapath 
 
     contains 
 

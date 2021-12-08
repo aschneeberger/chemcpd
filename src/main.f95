@@ -12,10 +12,6 @@ USE ENV
 
 IMPLICIT NONE 
 
-!The working path and data directory
-character (len=200):: PATH
-character(len=:) , ALLOCATABLE:: DATAPATH, logfile
-
 !Loop variables 
 integer :: i
 
@@ -135,8 +131,10 @@ x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
 write(30,*) "[MAIN] Begining test function solving"
-!call hybrd1 (Test_fcn, 2, x_test, fvec_test, tol, info , 2 , args_test)
-write(30,*) "[MAIN] End of test function solving with results" , x_test, fvec_test
+
+!Testing the method before launching, used for self written subroutines
+call hybrd1 (Test_fcn, 2, x_test, fvec_test, tol, info , 2 , args_test)
+write(30,*) "[MAIN] End of test function solving with results" , x_test, fvec_test, "and exit code" ,info 
 
 Write(30,*) "[MAIN] Begining of solving "
 

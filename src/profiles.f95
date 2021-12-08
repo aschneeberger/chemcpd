@@ -344,6 +344,7 @@ function flux_planet(N,r,z_s)
     flux_planet = p_L_p * sin(eps  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
     m_ncalls = m_ncalls+1
 
+ 
 end function
 
 
@@ -431,6 +432,7 @@ function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
 
     !Internal 
     double precision , dimension(N) :: prefactor ! prefactor in equation 
+
 
     prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
 
@@ -1040,17 +1042,37 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     ! Ensure results stablilty
     if (p_verbose) write(30,*) '[RES] Physical validity check'
 
-    if (ALL(z_add > z_s)) then 
+    if (ANY(T_mid < 0.0 )) then 
+        write(30,*) '[RES] Warning Unphysical occurance of neg T_mid, changing to 100K'
+        T_mid = max(100.0d0,T_mid)
+    end if 
+
+    if (ANY(T_s < 0.0 )) then 
+        write(30,*) '[RES] Warning Unphysical occurance of neg T_s, changing to 100K'
+        T_s = max(100.0d0,T_s)
+    end if 
+
+    if (ANY(z_s < 0.0 )) then 
+        write(30,*) '[RES] Warning Unphysical occurance of neg z_s, changing to 2 R_jup'
+        z_s = max(2.0d0*c_R_jup,z_s)
+    end if 
+
+    if (ANY(z_add < 0.0 )) then 
+        write(30,*) '[RES] Warning Unphysical occurance of neg z_add, changing to R_J'
+        z_add = max(c_R_jup,z_add)
+    end if 
+
+    if (ANY(z_add > z_s)) then 
         write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
         z_add = min(z_add,z_s)
     end if 
 
-    if (ALL(rho_mid < rho_add)) then 
+    if (ANY(rho_mid < rho_add)) then 
         write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
         rho_mid = max(rho_mid,rho_add)
     end if  
 
-    if (ALL(rho_add < rho_s)) then 
+    if (ANY(rho_add < rho_s)) then 
         write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
         rho_add = max(rho_add,rho_s)
     end if 
@@ -1081,8 +1103,8 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)&
-    &/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
+    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)!&
+    !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
     !addiabatique to isotherm transition altitude 

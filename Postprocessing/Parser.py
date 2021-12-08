@@ -5,14 +5,13 @@ Lib to parse output files from the model into astropy table.
 """
 
 import sys 
-import numpy as np 
 import matplotlib.pyplot as plt 
 from astropy.table import Table
 import os 
 import astropy.constants as cte
 
-DIRECTORY  = '../Data' 
-FILENAME = sys.argv[1] 
+DIRECTORY  = '../Archives/' + sys.argv[1]
+FILENAME = sys.argv[2] 
 
 def Parse(dir,fname) :
     """
