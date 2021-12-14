@@ -1,6 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt 
+from scipy.special import erf
 
 def test_func(V) :
 
@@ -9,27 +10,62 @@ def test_func(V) :
     z = V[2]
     a = V[3]
 
-    r0 = a + x - 3*y + z - 2
-    r1 = -5*a + 3*x - 4*y + z 
-    r2 = a + 2*y - z -1
-    r3 = a + 2*x - 12
+    r0 = a + np.cos(x*y + np.sin(a)) - 3*y + z - 20*a/y
+    r1 = -5*a  - 4*y + z 
+    r2 = a*x + 2*y*y**5 - z -1
+    r3 = erf(a) + 2*x - 12
 
     return np.array([r0,r1,r2,r3])
 
+def test_exp_diff(V) :
 
+    global dr
+    W= np.zeros_like(V)
+    dV = np.gradient(V,r,edge_order=2) 
+    dV[0] = (1-V[1])/(dr*2)
+    dV[-1] = (np.exp(10) - V[-2])/(dr*2)
+    
+    W = dV - 10*V
+    return W
 
+def test_heat_eq(V):
+    W= np.zeros_like(V)
+    dV = np.gradient(V,r,edge_order=2)
+    ddV = np.gradient(dV,r,edge_order=2)
+
+    V0 = 800
+    Vn = 200
+
+    dV[0] = (V[1] - V0)/(2*dr) 
+    dV[-1] = (Vn - V[-2])/(2*dr) 
+
+    ddV[0] = (V0 + V[1] - 2*V[0]) / (dr**2)
+    ddV[-1] = (Vn + V[-2] - 2*V[-1]) / (dr**2)
+    
+
+    W = ddV + 1e4 * np.exp(-(r-0.5)**2/0.02) + 1e4*np.exp(-(r-0.1)**2/0.02) 
+    return W
 
 def Jv(fun,U,V) :
+    """
+    Compute an approximation of the dot product 
+    between the system's jacobian at U and a vector V
+    It is approximated as (F[U+epsV] - F[U]) / eps
+    """
 
-
+    #Computation of optimum epsilon from vec norms and 
+    # Machine precision
     norm_U = np.sqrt( np.sum(U*U) )
     norm_V = np.sqrt( np.sum(V*V) )
     
+    #if norm_V is zeros then the dot product us null
     if norm_V == 0.0 :
         return  np.zeros(np.shape(V))
 
+    # Computation of the optimal eps from Knoll 2003
     eps = np.sqrt((1+norm_U)*np.finfo(float).eps) / norm_V 
 
+    #Computation of Jv
     return (fun(U+eps*V) - fun(U)) / eps
 
 
@@ -42,6 +78,8 @@ def Arnoldi_basis_construct(func,U,v1,tol) :
     H = np.array([[0]])#Hessenberg matrix = jacobian in krylov space H=Vk* J Vk
     Vk = np.array([v1]).T  #Arnoldi basis 
     res = 1
+    alpha = 1
+
     while res > tol  :
         # Create a new Vk basis matrix 
         n_Vk = np.zeros((len(U),j+1))
@@ -66,11 +104,17 @@ def Arnoldi_basis_construct(func,U,v1,tol) :
 
         # The resolution is the last term of the H matrix
         res = H[j,j-1]
+
+        #Upadate alpha 
+        # gammak = 
+        # sintetak = H[j,j-1] * gammak
+        # alpha = alpha *sintetak
         j=j+1
+            
     return Vk,H[:,:j-1]
 
 
-def GMRES_naive(func,X0,tol) :
+def GMRES_naive(func,X0,tol,it_max) :
     """
     Naive GMRES algorithm based on the paper of Ayachour 2002. 
     It use an alternative minimization of the residue in Krylov space 
@@ -81,16 +125,17 @@ def GMRES_naive(func,X0,tol) :
     #Init the iteration
     X = X0
     r0_norm = 1.0
+    it=0
 
-    while r0_norm  > tol :
+    while r0_norm  > tol and it<it_max :
 
         #Compute the current residue 
-        r0 = Jv(test_func,X,np.zeros_like(X)) - test_func(X)
+        r0 = Jv(func,X,np.zeros_like(X)) - func(X)
         r0_norm = np.sqrt(np.sum(r0*r0))
         # First vector of the Arnoldi basis 
         v1 = r0/r0_norm
         #Construct get the arnoldi basis and Hessenberg matrix 
-        Vk,Hk_tilde = Arnoldi_basis_construct(func,X,v1,1e-30)
+        Vk,Hk_tilde = Arnoldi_basis_construct(func,X,v1,1e-5)
 
         # Construct the new du from the Ayachour paper 
         # Same notations are used, for more details see the paper 
@@ -112,13 +157,47 @@ def GMRES_naive(func,X0,tol) :
 
         #Do the newton step
         X = X + du
-
-        print("X",X)
-        print("du",du)
-
+        it+=1
+        plt.clf()
+        plt.cla()
+        plt.plot(r,X,'+')
+        plt.pause(0.1)
+        print(it,r0_norm)
+    plt.close()
     return X
 
 
-X0 = np.array([10.0,1.0,1.0,1.0])
+def GMRES_restart(func,x0,tol,it_max,restart_eps) :
+    """
+    GMRES algorithm based on the paper of Ayachour 2002, with a restart criterion to avoid stagnation. 
+    Same principle as for the naive function
+    """
 
-X = GMRES_naive(test_func,X0,1e-10) 
+    #Init the iteration
+    X = X0
+    r0_norm = 1.0
+    it=0
+    alpha = 1.0
+    while alpha*alpha*r0_norm > restart_eps :
+        
+        #Compute the current residue 
+        r0 = Jv(func,X,np.zeros_like(X)) - func(X)
+        r0_norm = np.sqrt(np.sum(r0*r0))
+        # First vector of the Arnoldi basis 
+        v1 = r0/r0_norm
+        #Construct get the arnoldi basis and Hessenberg matrix 
+        Vk,Hk_tilde = Arnoldi_basis_construct(func,X,v1,1e-5)
+
+
+
+
+N=1000
+dr = 0.001
+r = np.arange(dr,1,dr)
+
+X0 = np.ones_like(r)*1e5
+
+X = GMRES_naive(test_exp_diff,X0,1e-6,5e3) 
+plt.figure()
+plt.plot(r,X)
+plt.show()
