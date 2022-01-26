@@ -1118,9 +1118,11 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     ! concatenate everyting 
     fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
     if (p_verbose) write(30,*) '[RES] Serelizing complete'
-    
-    !Every p_inter_rate calls, write intermediates files for debugging
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Every p_inter_rate calls, write intermediates files for debugging!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     if ( modulo(r_ncalls, p_inter_rate) == 0) then 
         !Write the temporary solution 
         write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",r_ncalls,'.dat'
