@@ -127,9 +127,10 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
     r0_norm = 1.0
     it=0
     res = np.sqrt(np.sum(func(X0)**2))
-
+    du = 1.00
     while res  > tol and it<it_max :
 
+        du_old = du
         #Compute the current residue 
         r0 = Jv(func,X,np.zeros_like(X)) - func(X)
         r0_norm = np.sqrt(np.sum(r0*r0))
@@ -159,11 +160,13 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
         #Do the newton step by line search
         s = 1.0
         ratio = np.sum(func(X+s*du)**2) / np.sum(func(X)**2) 
-        while ratio >= 1.0 :
+        while ratio >= 1.0 and s != 0.0 :
             s =s/2
             ratio = np.sum(func(X+s*du)**2) / np.sum(func(X)**2) 
             print(s,ratio)
 
+        if s == 0.0 :
+            s= 0.5 
         X = X + s*du 
 
         res = np.sqrt(np.sum(func(X)**2))
@@ -172,7 +175,7 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
         plt.cla()
         plt.plot(r,X,'+')
         plt.pause(0.1)
-        print(it,res)
+        print(it,res,np.sqrt(np.sum(du**2)),np.sqrt(np.sum((du/du_old)**2)))
     plt.close()
     return X
 
