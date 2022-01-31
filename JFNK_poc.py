@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 from scipy.special import erf
-
+import scipy as sc 
 def test_func(V) :
 
     x = V[0]
@@ -156,7 +156,7 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
 
         #Retreiving du from the krylov solution by basis change 
         du = np.dot(Vk[:,:-1],r0_norm*z)
-
+    
         #Do the newton step by line search
         s = 1.0
         ratio = np.sum(func(X+s*du)**2) / np.sum(func(X)**2) 
@@ -175,7 +175,8 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
         # plt.cla()
         # plt.plot(r,X,'+')
         # plt.pause(0.1)
-        print(it,res,np.sqrt(np.sum(du**2)),np.sqrt(np.sum((du/du_old)**2)))
+        print(it,du)
+        #print(it,res,np.sqrt(np.sum(du**2)),np.sqrt(np.sum((du/du_old)**2)))
     plt.close()
     return X
 
@@ -211,8 +212,8 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
     res_norm = np.sqrt(np.sum(res*res))
 
     #Arnoldi basis 
-    Vk = [0] * max_iter 
-    Vk[0] = res/res_norm
+    Vk =  np.zeros((max_iter,len(fu_init))) 
+    Vk[0,:] = res/res_norm
 
     #Hessenberg matrix
     H = np.zeros((max_iter+1,max_iter))
@@ -229,7 +230,7 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
     for k in range(max_iter+1): 
         
         # Estimation of a Krylov vector 
-        Vk_estimate = Jv(func,u,np.array(Vk[k]))
+        Vk_estimate = Jv(func,u,Vk[k])
         
         for j in range(k+1) :
             # Orthogonalisation of the vector 
@@ -247,7 +248,6 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
             break
 
         #Since H[k+1,k] is the equivalent to the residual, it is our break condition
-        print(H[k+1,k])
         if np.abs(H[k+1,k]) < tol : 
             break 
 
@@ -282,10 +282,19 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
     # Here is the BackSubstitution of H by fu to get the 
     # the current guess solution in the Krylov space Vk
     # Will be done explicitly in a next iteration. 
-    lmbd = np.linalg.lstsq(H,fu)[0]
+    plt.imshow(np.log10(np.abs(H[:k+1,:k+1])))
+    plt.show()
+    print("fu-------------------------")
+    print(fu[:k+1])
 
-    print(np.array(Vk))
-    return np.dot(np.asarray(Vk).transpose(),lmbd)
+    lmbd = sc.linalg.lstsq(H[:k+1,:k+1],fu[:k+1])[0]
+
+    print("lmbd-------------------------")
+    print(lmbd)
+
+    print("Vk-------------------------")
+    print(Vk[:k+1])
+    return -np.dot(Vk[:k+1].T,lmbd)
 
 
 
@@ -388,6 +397,7 @@ while True :
     du = GMRES_given_jfnk(test_func,u,du0,1e-30,30)
     print(du)
     u = u + du 
+    print(u)
     plt.pause(1)
 # X = GMRES_restart_naive(test_heat_eq,X0,1e-6,5e3) 
 # plt.figure()
