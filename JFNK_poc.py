@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from scipy.special import erf
 import scipy as sc 
+import time 
+
 def test_func(V) :
 
     x = V[0]
@@ -175,7 +177,6 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
         # plt.cla()
         # plt.plot(r,X,'+')
         # plt.pause(0.1)
-        print(it,du)
         #print(it,res,np.sqrt(np.sum(du**2)),np.sqrt(np.sum((du/du_old)**2)))
     plt.close()
     return X
@@ -286,93 +287,23 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
     return np.dot(Vk[:k+1].T,lmbd)
 
 
-
-
-def gmres_algorithm_givens (A , b , x0 , error , max_iter ):
+def JFNK_given(func,u,tol,max_iter) :
     """
-    Given rotation algorithm from github. Used to understand the implementation to write 
-    An equivalent for the JFNK 
+    Jacobian free newton-krylov method with GMRES-Given residual minimization
     """
-    res = b - np.asarray(np.dot(A,x0)).reshape(-1) # residual error
-
-    x_pred = []
-
-    q_ = [0] * max_iter
-
-    x_pred.append(res)
-
-    q_[0] = res / np.linalg.norm(res)
-
-    h_ = np.zeros((max_iter + 1, max_iter))
-
-    sn = np.zeros((max_iter , 1))
-
-    cs = np.zeros((max_iter , 1))
-
-    b_ = np.zeros(max_iter + 1)
-
-    b_[0] = np.linalg.norm(res)
-
-
+    res = np.linalg.norm(func(u))
+    du0 = np.zeros_like(u)
     
-    for k in range(min(max_iter , A.shape[0])) : 
+    while res > tol :
 
+        du = GMRES_given_jf(func,u,du0,1e-20,max_iter)
+        u = u + du 
 
-        y_out = np.asarray(np.dot(A,q_[k])).reshape(-1)
+        res =  np.linalg.norm(func(u))
 
+    return u
 
-
-        for j in range(k+1) : 
-            h_[j , k] = np.dot(q_[j],y_out)
-            y_out = y_out - h_[j , k] * q_[j]
-        
-        h_[k+1 , k] = np.linalg.norm(y_out) 
-
-        if (h_[k + 1, k] != 0 and k != max_iter - 1):
-            q_[k+1] = y_out / h_[k+1 , k]
-        
-        for i in range(k): 
-            temp   =  cs[i] * h_[i , k] + sn[i] * h_[i+1  , k]
-            h_[i+1 ,k] = -1*sn[i] * h_[i , k] + cs[i] * h_[i+1 , k]
-            h_[i , k]   = temp
-        
-        t = np.sqrt(h_[k , k]**2 + h_[k+1 , k]**2)
-
-        cs[k] = (h_[k , k]) /t
-        sn[k] = (h_[k+1 , k]) /t
-
-        h_[k , k] = cs[k] * h_[k , k] + sn[k] * h_[k + 1 , k]
-        h_[k + 1 , k] = 0
-
-        b_[k + 1] = -1 * sn[k] * b_[k]
-        b_[k] = cs[k] * b_[k]
-
-        #print(h_)
-        #print(b_)
-
-        c_ = np.linalg.lstsq(h_ , b_)[0] 
-
-        prod_ = np.asarray(np.dot(np.asarray(q_).transpose() , c_))
-
-        if (k == max_iter - 1) :
-            print('q_ ' + str(np.asarray(q_).shape) + ' c_shape = ' + str(c_.shape) + ' prod_ = ' + str(prod_.shape))
-
-        #print(prod_)
-
-        x_pred.append(prod_ + x0)  
-
-        x_temp_ = (np.linalg.norm(b - np.dot(A ,(prod_ + x0)).reshape(-1)) / np.linalg.norm(b))
-
-
-        print(x_temp_)
-
-        if (x_temp_ < error) :
-            print("exit val : ", k)
-            break
-
-    return x_pred
-
-N=1000
+N=8000
 dr = 0.001
 r = np.arange(dr,1,dr)
 
@@ -380,14 +311,27 @@ X0 = np.ones_like(r)*1e5
 
 du0 = np.array([0,0,0,0])
 u = np.array([0,0,0,0])
-Uf = GMRES_restart_naive(test_func,u,1e-10,1000)
+func = test_heat_eq
 
-while True :
-    du = GMRES_given_jf(test_func,u,du0,1e-30,30)
-    print(du)
-    u = u + du 
-    print(u)
-    plt.pause(1)
+t0 = time.time()
+
+Sol_naive = GMRES_restart_naive(func,X0,1e-5,100)
+t_naive = time.time()
+
+Sol_given = JFNK_given(func,X0,1e-5,100)
+t_given = time.time()
+
+print("NAIVE-------------------------")
+#print("solution: ", Sol_naive )
+print("res:, ", np.linalg.norm(func(Sol_naive)))
+print("exec_time: ", t_naive - t0)
+
+print("\nGIVEN-------------------------")
+#print("solution: ", Sol_given)
+print("res:, ", np.linalg.norm(func(Sol_given)))
+print("exec_time: ",  t_given - t_naive )
+
+
 # X = GMRES_restart_naive(test_heat_eq,X0,1e-6,5e3) 
 # plt.figure()
 # plt.plot(r,X)
