@@ -181,7 +181,7 @@ def GMRES_restart_naive(func,X0,tol,it_max) :
     return X
 
 
-def GMRES_given_jfnk(func,u,du0,tol,max_iter):
+def GMRES_given_jf(func,u,du0,tol,max_iter):
     """
     Given rotation GMRES version, it include the computation of the Arnoldi basis and 
     the reduction of the Vk vector basis matrix. It return the du that minimize the 
@@ -208,7 +208,7 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
     fu_init = func(u)
     
     #Initialize the residual 
-    res = fu_init - Jv(func,u,du0) 
+    res = Jv(func,u,du0) - fu_init
     res_norm = np.sqrt(np.sum(res*res))
 
     #Arnoldi basis 
@@ -231,7 +231,7 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
         
         # Estimation of a Krylov vector 
         Vk_estimate = Jv(func,u,Vk[k])
-        
+
         for j in range(k+1) :
             # Orthogonalisation of the vector 
             H[j,k] = np.dot(Vk[j],Vk_estimate)
@@ -259,8 +259,6 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
             H[i+1,k] = -1.0 * Sn[i] * H[i,k] + Cs[i] * H[i+1,k]
             H[i,k] = qr_temp
 
-        
-        
         # Computation of the next Given Rotation factors 
 
         t = np.sqrt(H[k,k]**2 + H[k+1,k]**2)
@@ -282,19 +280,10 @@ def GMRES_given_jfnk(func,u,du0,tol,max_iter):
     # Here is the BackSubstitution of H by fu to get the 
     # the current guess solution in the Krylov space Vk
     # Will be done explicitly in a next iteration. 
-    plt.imshow(np.log10(np.abs(H[:k+1,:k+1])))
-    plt.show()
-    print("fu-------------------------")
-    print(fu[:k+1])
 
     lmbd = sc.linalg.lstsq(H[:k+1,:k+1],fu[:k+1])[0]
 
-    print("lmbd-------------------------")
-    print(lmbd)
-
-    print("Vk-------------------------")
-    print(Vk[:k+1])
-    return -np.dot(Vk[:k+1].T,lmbd)
+    return np.dot(Vk[:k+1].T,lmbd)
 
 
 
@@ -394,7 +383,7 @@ u = np.array([0,0,0,0])
 Uf = GMRES_restart_naive(test_func,u,1e-10,1000)
 
 while True :
-    du = GMRES_given_jfnk(test_func,u,du0,1e-30,30)
+    du = GMRES_given_jf(test_func,u,du0,1e-30,30)
     print(du)
     u = u + du 
     print(u)
