@@ -1,14 +1,14 @@
 .PHONY : clean all chemcpd.exe
 
-CFLAG = -fbounds-check -fbacktrace -Ofast #-g3 -ffpe-trap=invalid,zero,overflow -Wall 
-DFLAG = -c -fbounds-check -fbacktrace -Ofast ##-g3 -ffpe-trap=invalid,zero,overflow -Wall
+CFLAG = -fbounds-check -fbacktrace -Ofast -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
+DFLAG = -c -fbounds-check -fbacktrace -Ofast -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow
 OBJ = quadpack.o minpack.o constant_table.o particular_functions.o profiles.o  
 DIR = ./src
 
 all: chemcpd.exe
 
 chemcpd.exe : $(DIR)/main.f95  quadpack.o minpack.o constant_table.o env.o particular_functions.o profiles.o solver.o 
-	gfortran $(CFLAG) $(DIR)/main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o solver.o -o chemcpd.exe 
+	gfortran $(CFLAG) $(DIR)/main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o solver.o -o chemcpd.exe  
 	make clean
 	make reset
 
