@@ -9,6 +9,7 @@ USE DSKPHY
 USE QUADPACK
 USE PARTFUN
 USE ENV
+USE JFNK
 
 IMPLICIT NONE 
 
@@ -33,7 +34,7 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X ! array containin all variables (8*p_Nr) 
+DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X,jacvec ! array containin all variables (8*p_Nr) 
 DOUBLE PRECISION , dimension(p_Nr*8) :: fvec ! Residues array 
 double precision :: tol = 1.0d-2 !asked relative error in the resolution 
 double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
@@ -126,6 +127,8 @@ Write(30,*) "[MAIN] Guesses Written "
 
 !Create the variable to be parsed in the solver subroutine 
 x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
+
+jacvec = jac_vec(p_Nr*8,Equation_system_ms,x,1d-4*x)
 
 !Create the argument to be parsed in Equation_system_ms
 args = [cap_lambda,omegak,F_vis,F_acc,r]

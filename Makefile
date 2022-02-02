@@ -7,8 +7,8 @@ DIR = ./src
 
 all: chemcpd.exe
 
-chemcpd.exe : $(DIR)/main.f95  quadpack.o minpack.o constant_table.o env.o particular_functions.o profiles.o 
-	gfortran $(CFLAG) $(DIR)/main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o -o chemcpd.exe 
+chemcpd.exe : $(DIR)/main.f95  quadpack.o minpack.o constant_table.o env.o particular_functions.o profiles.o solver.o 
+	gfortran $(CFLAG) $(DIR)/main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o solver.o -o chemcpd.exe 
 	make clean
 	make reset
 
@@ -30,6 +30,9 @@ particular_functions.o : $(DIR)/particular_functions.f95
 
 env.o : $(DIR)/env.f95
 	gfortran $(DFLAG) $(DIR)/env.f95
+
+solver.o : $(DIR)/solver.f95
+	gfortran $(DFLAG) $(DIR)/solver.f95
 
 clean : 
 	rm *.o *.mod 
