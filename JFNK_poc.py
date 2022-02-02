@@ -1,4 +1,5 @@
 
+from turtle import title
 import numpy as np
 import matplotlib.pyplot as plt 
 from scipy.special import erf
@@ -282,8 +283,8 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
     # the current guess solution in the Krylov space Vk
     # Will be done explicitly in a next iteration. 
 
-    lmbd = sc.linalg.lstsq(H[:k+1,:k+1],fu[:k+1])[0]
-
+    lmbd = back_substitution(H[:k+1,:k+1],fu[:k+1])
+    
     return np.dot(Vk[:k+1].T,lmbd)
 
 
@@ -300,25 +301,45 @@ def JFNK_given(func,u,tol,max_iter) :
         u = u + du 
 
         res =  np.linalg.norm(func(u))
+        print(res)
 
     return u
 
-N=8000
-dr = 0.001
+def back_substitution(U,b) :
+    """
+    Compute the solution of b - U*lmbd = 0 with U an upper triangular matrix
+    """
+
+    lmbd = np.zeros_like(b) 
+    N = len(b)
+    lmbd[N-1] = b[N-1]/U[N-1,N-1]
+
+    for i in range(N-2,-1,-1) :
+        S = b[i]
+        for j in range(N-1,i,-1) :
+
+            S = S - U[i,j]*lmbd[j] 
+        
+        lmbd[i] = S/U[i,i] 
+
+    return lmbd
+
+N=  1200
+dr = 1/N
 r = np.arange(dr,1,dr)
 
-X0 = np.ones_like(r)*1e5
+X0 = np.ones_like(r)#*1e5
 
 du0 = np.array([0,0,0,0])
 u = np.array([0,0,0,0])
-func = test_heat_eq
+func = test_exp_diff
 
 t0 = time.time()
 
 Sol_naive = GMRES_restart_naive(func,X0,1e-5,100)
 t_naive = time.time()
 
-Sol_given = JFNK_given(func,X0,1e-5,100)
+Sol_given = JFNK_given(func,X0,1e-5,300)
 t_given = time.time()
 
 print("NAIVE-------------------------")
@@ -332,7 +353,8 @@ print("res:, ", np.linalg.norm(func(Sol_given)))
 print("exec_time: ",  t_given - t_naive )
 
 
-# X = GMRES_restart_naive(test_heat_eq,X0,1e-6,5e3) 
-# plt.figure()
-# plt.plot(r,X)
-# plt.show()
+plt.figure()
+plt.plot(r,Sol_naive,label = "Naive")
+plt.plot(r,Sol_given,label = "Given")
+plt.legend()
+plt.show()
