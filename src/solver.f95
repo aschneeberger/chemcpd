@@ -20,11 +20,6 @@ module JFNK
     ! end function 
 
 
-    subroutine GMRES()
-        ! Performe a General minimization of residues
-        ! of the form || Ax - f || in the definition of L2 norme 
-
-    end subroutine 
 
     function jac_vec(N,func,u,v,N_args,args) 
         ! Compute the dot product of the Jacobian of 
@@ -44,6 +39,12 @@ module JFNK
         ! u(N) : double precision : Point in function space where the J.v evaluated 
         !
         ! v(N) : double precision : Vector of the dot product J.v 
+        !
+        ! N : integer : number of points
+        !
+        ! N_args : interger : Number of arguments to pass in the function 
+        !
+        ! args(N_args) : double precision : arguments to pass in the function
         !
         !-------
         !Ouput :
@@ -104,5 +105,95 @@ module JFNK
         
     end function 
 
-    
+    function GMRES_given(N,func,U,dU0,N_args,args,tol,max_iter)
+        ! Given rotation GMRES version, it include the computation of the Arnoldi basis and 
+        ! the reduction of the Vk vector basis matrix. It return the du minimizing the 
+        ! residual (||func(u) - Jdu||₂) for a system of dimension N. Where func(u) is
+        ! the system we want to solve by JFNK, J is the jacobian of the system and du is  
+        ! the newton step we are looking for. For more information on the method :
+        ! Knoll et al 2009 and  Saad et al 1986.
+        !
+        !------
+        !INPUTS
+        !------
+        !
+        ! N : interger : number of equations in the system 
+        !
+        ! func(N,U,N_args,args) -> double precision(N) : function we are minimizing 
+        !
+        ! U(N) : double precision : Point where dU is searched 
+        !
+        ! dU0(N) : double precision : Initial guess of the newton step 
+        !
+        ! N_args : integer : number of arguments to pass in function func
+        ! 
+        ! args(N_args) : argument to pass in function func 
+        !
+        ! tol : double precision : Wanted tolerance on the minimizing of the residual 
+        !
+        ! max_iter : integer : Maximum number of iteration allowed to do the minimization
+        !
+        !-----
+        !OUPUT
+        !-----
+        !
+        ! GMRES_given(N) : double precision : newton step minimizing ||func(u) - Jdu||₂
+
+        !IN/OUT 
+
+        integer :: N  ! number of equations 
+        integer :: N_args ! number of arguments 
+
+        double precision, dimension(N) :: U ! point where the residual is minimized 
+        double precision , dimension(N) :: dU0 ! Init guess of newton step 
+        double precision , dimension(N_args) :: args ! args to pass in  func 
+
+        double precision :: tol ! Wanted tolerance on the minimizing of the residual 
+        integer  :: max_iter ! maximum number of iteration allowed to do the minimization
+        
+        double precision, dimension(N) :: GMRES_given 
+        external :: func 
+
+        ! Internal vars  
+
+        double precision, dimension(N) :: fu ! Evaluation of func(u) that will pass through the rotation
+        double precision, dimension(N) :: fu_init ! Evaluation of func(u)
+
+        double precision, dimension(N) :: res ! residual
+        double precision, dimension(N) :: res_norm ! norm of the residual  
+
+        double precision, dimension(max_iter, N) :: Vk ! matrix of krylov space basis vectors
+        double precision, dimension(N) :: Vk_estimate ! intermediary Krylov vector estimation 
+        double precision :: Vk_estimate_norm ! norm of intermediary Krylov vector estimate
+
+        double precision, dimension(max_iter+1, max_iter) :: Hess ! Hessenberg matrix, used to construct Vk 
+
+        double precision, dimension(max_iter,1) :: Sn, Cn ! Given rotation coefficients vectors 
+        double precision :: QR_temp ! Temporary given rotation of a given Hessenberg matrix term
+
+
+        !Interface of the function used in the residual minimization
+        interface 
+            ! Func subroutine is defined as following :
+            function func(i_N,i_u,i_N_args,i_args)
+                
+            ! i_N : number of equation 
+            ! i_u : Point where func is evaluated 
+            ! i_N_args : number of external arguments 
+            ! i_args : number of external arguments 
+
+            integer :: i_N , i_N_args 
+            double precision , dimension(i_N)::  func , i_u
+            double precision , dimension(i_N_args):: i_args 
+
+        end function 
+        end interface 
+
+        ! Evaluation of func(u) 
+        fu_init = func(N,U,N_args,args)
+        fu = fu_init  ! copy of func(u) in the array that will pass through the rotation
+
+        res = jac_vec(N,func,U,du0,N_args,args) - fu_init
+
+    end function 
 end module 
