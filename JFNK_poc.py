@@ -281,7 +281,6 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
         fu[k] = Cs[k] * fu[k]
     # Here is the BackSubstitution of H by fu to get the 
     # the current guess solution in the Krylov space Vk
-    # Will be done explicitly in a next iteration. 
 
     lmbd = back_substitution(H[:k+1,:k+1],fu[:k+1])
     

@@ -12,13 +12,58 @@ module JFNK
     contains 
 
 
-    ! function solver_jfnk(X,args,minbounds,maxbounds)
-    !     ! API fucntion of the jfkn solver, is the front_end of the module
-    !     ! This function will call succesively all needed funtion of the 
-    !     ! of the module to performe a jacobian Free Newton-Krylov resolution
+    function back_substitution(N,U,b) 
+        ! Function that solve the system Ux = b 
+        ! where U is a upper triangular matrix (N,N) 
+        ! and b is a vector N. The reference can be found 
+        ! here https://algowiki-project.org/en/Backward_substitution 
+        !
+        !--------
+        !Inputs :
+        !--------
+        !
+        ! N : integer : size of the matrix U and vector b
+        !
+        ! U(N,N) : double precision : upper triangular matrix 
+        !
+        ! b(N) : double precision : vector of value 
+        !
+        !--------
+        !Output :
+        !--------
+        !
+        ! back_substitution(N) : double precision : vector of the solutions
 
-    ! end function 
+        !IN/OUT
+        integer :: N
+        double precision, dimension(N,N) :: U ! upper triangular matrix 
+        double precision, dimension(N) :: b ! vector of value
+        double precision, dimension(N) :: back_substitution ! solution of Ux = b
+        
+        ! Internal vars 
+        double precision :: acc ! accumulative var 
+        ! iteration var
+        integer :: i,j  
 
+        ! Initialisation 
+        back_substitution(N) = b(N)/U(N,N)
+
+        ! The algo back propagate from N to 1 
+        do i=N-1,1,-1
+            !init accumator 
+            acc = b(i)
+            
+            do j=N,1,-1
+                !Do the sum 
+                acc = acc - U(i,j)*back_substitution(j)
+
+            end do 
+            
+            !rescale 
+            back_substitution(i) = acc/U(i,i)
+        end do 
+
+    end function 
 
 
     function jac_vec(N,func,u,v,N_args,args) 
@@ -160,17 +205,20 @@ module JFNK
         double precision, dimension(N) :: fu_init ! Evaluation of func(u)
 
         double precision, dimension(N) :: res ! residual
-        double precision, dimension(N) :: res_norm ! norm of the residual  
+        double precision :: res_norm ! norm of the residual  
 
         double precision, dimension(max_iter, N) :: Vk ! matrix of krylov space basis vectors
         double precision, dimension(N) :: Vk_estimate ! intermediary Krylov vector estimation 
-        double precision :: Vk_estimate_norm ! norm of intermediary Krylov vector estimate
 
         double precision, dimension(max_iter+1, max_iter) :: Hess ! Hessenberg matrix, used to construct Vk 
 
-        double precision, dimension(max_iter,1) :: Sn, Cn ! Given rotation coefficients vectors 
+        double precision, dimension(max_iter,1) :: Sn, Cs ! Given rotation coefficients vectors 
         double precision :: QR_temp ! Temporary given rotation of a given Hessenberg matrix term
+        
+        double precision, dimension(:),allocatable :: lmbd 
 
+        !iteration vars 
+        integer :: i,j,k
 
         !Interface of the function used in the residual minimization
         interface 
@@ -191,9 +239,80 @@ module JFNK
 
         ! Evaluation of func(u) 
         fu_init = func(N,U,N_args,args)
-        fu = fu_init  ! copy of func(u) in the array that will pass through the rotation
 
+        ! Residual with initial guess du0 
         res = jac_vec(N,func,U,du0,N_args,args) - fu_init
+        res_norm = norm2(res)
+
+        ! First vector of the krylov space is the normalized res 
+        Vk(1,:) = res/res_norm
+        
+        ! First component of fu that goes through the given rotation
+        fu(1) = res_norm
+        
+        !Creation of all krylov vector 
+        do k=1,max_iter+1 
+            
+            ! Estimation of Krylov vector k 
+            Vk_estimate = jac_vec(N,func,U,Vk(1,:),N_args,args)
+
+            do j=1,k+1
+                !Orthogonalisation of the estimated vector 
+                Hess(j,k) = dot_product(Vk(j,:),Vk_estimate)
+                Vk_estimate = Vk_estimate - Hess(j,k) * Vk(j,:) 
+            end do 
+            
+            !The next element of the Hessenberg matrix 
+            Hess(k+1,k) = norm2(Vk_estimate)
+
+            ! If Hessenberg matrix is not singular and if we did not exceed 
+            ! the maximum iteration number
+            if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) )  then 
+                ! Add the basis vector k+1
+                Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
+        
+            else 
+                exit 
+            end if 
+
+            !If the residue is less than asked tolerance, exit the loop
+            if (abs(Hess(k+1,k)) < tol) exit 
+            
+            ! We applay k Given Rotations to the Hessenberg matrix 
+            do i=1,k
+
+                ! Since we need the value of H[i,k] to compute the value
+                ! of the QR of  H[i+1,k]
+                QR_temp = Cs(i,1) * Hess(i,k) + Sn(i,1) * Hess(i+1,k) 
+                Hess(i+1,k) = -1.0d0 * Sn(i,1) * Hess(i,k) + Cs(i,1) * Hess(i+1,k)
+                Hess(i,k) = QR_temp
+            end do 
+
+            ! Computation of the k+1 th Given Rotation 
+            QR_temp = sqrt(Hess(k,k)*Hess(k,k) + Hess(k+1,k)*Hess(k+1,k))
+            Cs(k,1) = Hess(k,k)/QR_temp
+            Sn(k,1) = Hess(k+1,k)/QR_temp
+
+            ! Do the k+1 th Given Rotation transforming the Hessenberg Matrix into
+            ! pure upper Triangular matrix (easy to invert)            
+            Hess(k,k) = Cs(k,1) * Hess(k,k) + Sn(k,1) * Hess(k+1,k)
+
+            ! Since the transformation give an upper triangular matrix, this term is 
+            ! nullified by the k+1 th Given rotation
+            Hess(k+1,k) = 0.0d0
+            
+            ! We apply do the k+1 th rotation to fu to stay in the same basis
+            fu(k+1) =  -1.0d0 * Sn(k,1) * fu(k)
+            fu(k) = Cs(k,1) * fu(k)
+        end do 
+
+        ! Allocate the space for lmbd, now that we know the its size 
+        ALLOCATE(lmbd(k+1)) 
+
+        !Value du in the krylov space 
+        lmbd = back_substitution(k+1,Hess(:k+1,:k+1),fu(:k+1))
+
+        GMRES_given = matmul(transpose(Vk(:k+1,:)),fu(:k+1))
 
     end function 
 end module 
