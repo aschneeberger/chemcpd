@@ -5,8 +5,7 @@ module JFNK
     ! Jacobian Free Newton-Krylov solver module  
     ! this module will replace the Minpack module 
     ! at the end of the day. 
-
-    USE PHYCTE 
+    USE MODCTE 
 
     implicit None 
 
@@ -27,7 +26,7 @@ module JFNK
 
     end subroutine 
 
-    function jac_vec(N,func,u,v) 
+    function jac_vec(N,func,u,v,N_args,args) 
         ! Compute the dot product of the Jacobian of 
         ! The equation system of function fun and vector vec at 
         ! the point x in the N dim space.
@@ -54,16 +53,36 @@ module JFNK
 
 
         !IN/OUT
-        integer :: N  ! vectors sizes 
+        integer :: N  ! vectors size
+        integer :: N_args  ! Arguments size
         external :: func ! callable subroutine computing the function to use 
         double precision, dimension(N) :: u ! point in the function where J.v is computed 
         double precision, dimension(N) :: v ! Vector used in the dot product J.v
         double precision, dimension(N) :: jac_vec ! J.v 
+        double precision, dimension(N_args) :: args ! Vector of arguments
 
         !INTERNALS
         double precision :: eps ! Epsilon close to machine precision to compute derivative
         double precision :: norm_u ! L2 norm of U
         double precision :: norm_v ! L2 norm of V
+        double precision, dimension(N) :: fvec, fvec_eps ! fvec = func(u) and fvec_eps = func(u + v*eps)
+
+        ! Interface of the parametric subroutine func 
+        interface 
+        ! Func subroutine is defined as following :
+            function func(i_N,i_u,i_N_args,i_args)
+                
+                ! i_N : number of equation 
+                ! i_u : Point where func is evaluated 
+                ! i_N_args : number of external arguments 
+                ! i_args : number of external arguments 
+
+                integer :: i_N , i_N_args 
+                double precision , dimension(i_N)::  func , i_u
+                double precision , dimension(i_N_args):: i_args 
+
+            end function 
+        end interface 
 
         norm_u = norm2(u)
         norm_v = norm2(v)
@@ -77,7 +96,9 @@ module JFNK
             eps = sqrt( (1.0d0+ norm_u) * p_machine_precision ) / norm_v
             
             !Compute J.v 
-            !jac_vec = (func(u + eps*v) - func(u)) / eps 
+            fvec = func(N,u,N_args,args)
+            fvec_eps = func(N,u+v*eps,N_args,args)
+            jac_vec = (fvec_eps - fvec) / eps 
         end if 
         
         
