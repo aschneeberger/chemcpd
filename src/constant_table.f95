@@ -1,3 +1,6 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
+
 module PHYCTE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Physical constant table, all constant 

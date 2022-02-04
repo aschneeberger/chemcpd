@@ -1,3 +1,6 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
+
 ! The system to solve is derived from Makalkin et al 1995 and 2014, there are 8 equations to solbve 
 ! with 8 unknowns: 
 !     Σ: the surface density 
@@ -23,7 +26,6 @@ MODULE OPACITY
 USE MODCTE
 
 implicit none
-
 
 
 contains

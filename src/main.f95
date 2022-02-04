@@ -1,3 +1,5 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
 
 PROGRAM CHEMCPD 
 

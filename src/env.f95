@@ -1,3 +1,5 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
 Module ENV 
     ! Module made for working environment management 
     ! It containes all path variables and will aim 
