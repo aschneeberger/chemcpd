@@ -201,7 +201,7 @@ module JFNK
 
         ! Internal vars  
 
-        double precision, dimension(N) :: fu ! Evaluation of func(u) that will pass through the rotation
+        double precision, dimension(max_iter+1) :: fu ! Evaluation of func(u) that will pass through the rotation
         double precision, dimension(N) :: fu_init ! Evaluation of func(u)
 
         double precision, dimension(N) :: res ! residual
@@ -218,7 +218,7 @@ module JFNK
         double precision, dimension(:),allocatable :: lmbd 
 
         !iteration vars 
-        integer :: i,j,k
+        integer :: i,j,k,it
 
         !Interface of the function used in the residual minimization
         interface 
@@ -236,6 +236,13 @@ module JFNK
 
         end function 
         end interface 
+       
+        ! Initialisation of empty arrays 
+        Hess = 0.0d0
+        Cs = 0.0d0
+        Sn = 0.0d0
+        Vk = 0.0d0
+        fu = 0.0d0
 
         ! Evaluation of func(u) 
         fu_init = func(N,U,N_args,args)
@@ -246,15 +253,15 @@ module JFNK
 
         ! First vector of the krylov space is the normalized res 
         Vk(1,:) = res/res_norm
-        
         ! First component of fu that goes through the given rotation
         fu(1) = res_norm
+
         
         !Creation of all krylov vector 
-        do k=1,max_iter+1 
-            
+        do it=1,max_iter+1
+            k=it 
             ! Estimation of Krylov vector k 
-            Vk_estimate = jac_vec(N,func,U,Vk(1,:),N_args,args)
+            Vk_estimate = jac_vec(N,func,U,Vk(k,:),N_args,args)
 
             do j=1,k+1
                 !Orthogonalisation of the estimated vector 
@@ -267,11 +274,13 @@ module JFNK
 
             ! If Hessenberg matrix is not singular and if we did not exceed 
             ! the maximum iteration number
-            if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) )  then 
+            if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) ) then 
                 ! Add the basis vector k+1
                 Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
         
             else 
+                write(*,*) "STOP"
+                k = k-1
                 exit 
             end if 
 
@@ -279,7 +288,7 @@ module JFNK
             if (abs(Hess(k+1,k)) < tol) exit 
             
             ! We applay k Given Rotations to the Hessenberg matrix 
-            do i=1,k
+            do i=1,k-1
 
                 ! Since we need the value of H[i,k] to compute the value
                 ! of the QR of  H[i+1,k]
@@ -307,12 +316,12 @@ module JFNK
         end do 
 
         ! Allocate the space for lmbd, now that we know the its size 
-        ALLOCATE(lmbd(k+1)) 
-
+        ALLOCATE(lmbd(k)) 
+        write(*,*) k
         !Value du in the krylov space 
-        lmbd = back_substitution(k+1,Hess(:k+1,:k+1),fu(:k+1))
+        lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
 
-        GMRES_given = matmul(transpose(Vk(:k+1,:)),fu(:k+1))
+        GMRES_given = matmul(transpose(Vk(:k,:)),lmbd)
 
         DEALLOCATE(lmbd)
 
@@ -379,7 +388,7 @@ module JFNK
             double precision , dimension(i_N)::  func , i_u
             double precision , dimension(i_N_args):: i_args 
 
-        end function 
+            end function 
         end interface      
 
         du0 = 0.0d0 ! fill du0 with 0s
@@ -388,16 +397,20 @@ module JFNK
 
         do while (res > tol )
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,tol,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-30,max_iter)
 
             !update guess with newton step 
             solve_JFNK = solve_JFNK + du 
 
             res = norm2(func(N,solve_JFNK,N_args,args))
+            
+            write(*,*) "du", du
+            write(*,*) "u", solve_JFNK
+            write(*,*) "res", res
+            write(*,*) "------------------------"
 
-            write(*,*) res
         end do 
 
-    end function 
 
+    end function 
 end module 

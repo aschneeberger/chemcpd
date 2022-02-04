@@ -36,13 +36,13 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X,jacvec ! array containin all variables (8*p_Nr) 
+DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X ! array containin all variables (8*p_Nr) 
 DOUBLE PRECISION , dimension(p_Nr*8) :: fvec ! Residues array 
 double precision :: tol = 1.0d-2 !asked relative error in the resolution 
 double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
 
 !Test variables
-double precision , dimension(2) :: x_test = [1.0d0,2.0d0], fvec_test, args_test=[-6.0d0,2.0d0]
+double precision , dimension(2) ::jacvec, x_test = [0.0d0,0.0d0], fvec_test, args_test=[-6.0d0,2.0d0]
 
 integer :: info !output code of the solver : 
 !    0, improper input parameters.
@@ -134,7 +134,10 @@ x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 !Create the argument to be parsed in Equation_system_ms
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-jacvec = jac_vec(p_Nr*8,Equation_system_ms,x,x*1.0d-13,size(args),args)
+! jacvec = jac_vec(2,Test_fcn,x_test,[1.0d0,1.0d0],2,[0.0d0,0.0d0])
+
+! write(*,*) jacvec
+jacvec = solve_JFNK(2,Test_fcn,x_test,2,args_test,1.0d-10,100)
 
 write(*,*) jacvec
 

@@ -6,6 +6,14 @@ from scipy.special import erf
 import scipy as sc 
 import time 
 
+
+def test_sys(V) : 
+
+    x1 =  V[0] - 3*V[1] -2
+    x2 =  3*V[0] - 4*V[1]
+
+    return np.array([x1,x2])
+
 def test_func(V) :
 
     x = V[0]
@@ -247,6 +255,7 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
         if H[k+1,k] != 0 and k!= max_iter -1 :
             Vk[k+1] = Vk_estimate/H[k+1,k]
         else :
+            k = k -1
             break
 
         #Since H[k+1,k] is the equivalent to the residual, it is our break condition
@@ -283,7 +292,7 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
     # the current guess solution in the Krylov space Vk
 
     lmbd = back_substitution(H[:k+1,:k+1],fu[:k+1])
-    
+   # print(H[:k+1,:k+1],fu[:k+1].T)
     return np.dot(Vk[:k+1].T,lmbd)
 
 
@@ -296,7 +305,7 @@ def JFNK_given(func,u,tol,max_iter) :
     
     while res > tol :
 
-        du = GMRES_given_jf(func,u,du0,1e-20,max_iter)
+        du = GMRES_given_jf(func,u,du0,1e-30,max_iter)
         u = u + du 
 
         res =  np.linalg.norm(func(u))
@@ -323,7 +332,7 @@ def back_substitution(U,b) :
 
     return lmbd
 
-N=  1200
+N=  3000
 dr = 1/N
 r = np.arange(dr,1,dr)
 
@@ -331,29 +340,33 @@ X0 = np.ones_like(r)#*1e5
 
 du0 = np.array([0,0,0,0])
 u = np.array([0,0,0,0])
-func = test_exp_diff
+func = test_heat_eq
 
 t0 = time.time()
 
-Sol_naive = GMRES_restart_naive(func,X0,1e-5,100)
-t_naive = time.time()
+#sol = JFNK_given(test_sys,np.array([0.0,0.0]),1e-10,100)
 
-Sol_given = JFNK_given(func,X0,1e-5,300)
+# Sol_naive = GMRES_restart_naive(func,X0,1e-5,100)
+# t_naive = time.time()
+
+Sol_given = JFNK_given(func,X0,3e-5,300)
 t_given = time.time()
 
-print("NAIVE-------------------------")
-#print("solution: ", Sol_naive )
-print("res:, ", np.linalg.norm(func(Sol_naive)))
-print("exec_time: ", t_naive - t0)
+# print("NAIVE-------------------------")
+# #print("solution: ", Sol_naive )
+# print("res:, ", np.linalg.norm(func(Sol_naive)))
+# print("exec_time: ", t_naive - t0)
 
 print("\nGIVEN-------------------------")
 #print("solution: ", Sol_given)
 print("res:, ", np.linalg.norm(func(Sol_given)))
-print("exec_time: ",  t_given - t_naive )
+print("exec_time: ",  t_given - t0 )
 
 
 plt.figure()
-plt.plot(r,Sol_naive,label = "Naive")
+#plt.plot(r,Sol_naive,label = "Naive")
 plt.plot(r,Sol_given,label = "Given")
 plt.legend()
 plt.show()
+
+#print(sol)

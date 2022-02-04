@@ -4144,7 +4144,7 @@ subroutine lmstr ( fcn, m, n, x, fvec, fjac, ldfjac, ftol, xtol, gtol, maxfev, &
   real ( kind = rk ) wa3(n)
   real ( kind = rk ) wa4(m)
   real ( kind = rk ) x(n)
-  real ( kind = rk ) xnorm
+  real ( kind = rk ) :: xnorm = 0.0d0
   real ( kind = rk ) xtol
 
   epsmch = epsilon ( epsmch )

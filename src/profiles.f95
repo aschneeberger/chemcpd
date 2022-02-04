@@ -944,8 +944,8 @@ function  Test_fcn ( N, x, n_args, args )
     double precision , dimension(n_args):: args
     real ( kind = 8 ) ::  x(n)
 
-    Test_fcn(1) = -args(1) + x(1)**2 - 3*x(2)
-    Test_fcn(2) = args(2)*x(1)- 4*x(2)
+    Test_fcn(1) = x(1) - 3.0d0 *x(2) -2.0d0 
+    Test_fcn(2) = 3.0d0 * x(1) - 4.0d0 * x(2)
 end function
 
 
