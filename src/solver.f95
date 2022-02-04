@@ -314,5 +314,90 @@ module JFNK
 
         GMRES_given = matmul(transpose(Vk(:k+1,:)),fu(:k+1))
 
+        DEALLOCATE(lmbd)
+
     end function 
+
+
+    function solve_JFNK(N,func,U0,N_args,args,tol,max_iter)
+        ! Solve an equation system F(X) = 0 using a Jacobian Free Newton Krylov 
+        ! method, as described in Knoll et al 2002. This method is a derivative of a newton 
+        ! method ui+1 = ui + J(ui)^(-1) * f(ui). However in our case, we can not compute the Jacobian 
+        ! matrix explicitly. The vector dui is computed by minimizing the residu ||f(ui) - J(ui)dui||
+        ! with the given rotation GMRES method. 
+        !------
+        !INPUTS
+        !------
+        !
+        ! N : interger : number of equations in the system 
+        !
+        ! func(N,U,N_args,args) -> double precision(N) : function we are minimizing 
+        !
+        ! U0(N) : double precision : Initial guess
+        !
+        ! N_args : integer : number of arguments to pass in function func
+        ! 
+        ! args(N_args) : argument to pass in function func 
+        !
+        ! tol : double precision : Wanted tolerance on the minimizing of the function  
+        !
+        ! max_iter : integer : Maximum number of iteration allowed to do the minimization
+        !
+        !--------
+        !Output :
+        !--------
+        !
+        ! solve_JFNK(N) : double precision : solution of F(X) = 0
+        
+        !IN/OUT
+        integer :: N ! number of equations 
+        integer :: N_args ! number of arguments 
+        double precision, dimension(N) :: U0 ! Solution guesses 
+        double precision, dimension(N_args) :: args !arguments to be passed to the function 
+        double precision :: tol ! Wanted tolerance 
+        integer :: max_iter ! maximum number of iteration
+        external :: func  ! Function containing the system to solve 
+
+        double precision, dimension(N) :: solve_JFNK ! solution 
+
+        ! Internals 
+        double precision :: res ! residual of the  function 
+        double precision, dimension(N) :: du0 ! initial gmres step guess 
+        double precision, dimension(N) :: du ! newton step preformed
+
+        !Interface of the function used in the func minimization
+        interface 
+            ! Func subroutine is defined as following :
+            function func(i_N,i_u,i_N_args,i_args)
+                
+            ! i_N : number of equation 
+            ! i_u : Point where func is evaluated 
+            ! i_N_args : number of external arguments 
+            ! i_args : number of external arguments 
+
+            integer :: i_N , i_N_args 
+            double precision , dimension(i_N)::  func , i_u
+            double precision , dimension(i_N_args):: i_args 
+
+        end function 
+        end interface      
+
+        du0 = 0.0d0 ! fill du0 with 0s
+        solve_JFNK = U0 ! initialize the solution with initial guess
+        res = norm2(func(N,U0,N_args,args))
+
+        do while (res > tol )
+            ! Find the newton step with grmes given 
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,tol,max_iter)
+
+            !update guess with newton step 
+            solve_JFNK = solve_JFNK + du 
+
+            res = norm2(func(N,solve_JFNK,N_args,args))
+
+            write(*,*) res
+        end do 
+
+    end function 
+
 end module 
