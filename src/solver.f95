@@ -5,7 +5,8 @@ module JFNK
     ! Jacobian Free Newton-Krylov solver module  
     ! this module will replace the Minpack module 
     ! at the end of the day. 
-    USE MODCTE 
+    USE MODCTE
+    USE ENV 
 
     implicit None 
 
@@ -136,7 +137,7 @@ module JFNK
         double precision :: acc ! accumulative var 
         ! iteration var
         integer :: i,j  
-
+        back_substitution = 0.0d0
         ! Initialisation 
         back_substitution(N) = b(N)/U(N,N)
 
@@ -408,11 +409,11 @@ module JFNK
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
-        write(*,*) k
-        write(*,*) 'GMRES res', Hess(k,k)
+        ! write(*,*) k
+        ! write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
-
+        
         GMRES_given = matmul(transpose(Vk(:k,:)),lmbd)
 
         DEALLOCATE(lmbd)
@@ -496,8 +497,6 @@ module JFNK
 
             res = norm2(func(N,solve_JFNK,N_args,args))
             
-            write(*,*) "res", res
-            write(*,*) "------------------------"
 
         end do 
 
@@ -505,7 +504,9 @@ module JFNK
     end function 
 
     function run_test()
-
+        ! Function that test the JFNK solver with a known equation 
+        ! system and write the results in datapath
+        !
         integer,PARAMETER :: N=1000 
         integer :: i
         double precision, dimension(N) :: r
@@ -517,10 +518,15 @@ module JFNK
         forall(i = 1: N) r(i) = float(i)/(float(N+1))
         dr = 1/float(N)
 
+    
         guess = 1.0d0
 
-        X=solve_JFNK(N,test_exp,guess,N+1,[dr,r],3.0d-5,300)
-        
+        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,300)
+        open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
+        do i=1,N
+            write(20,*) r(i), X(i)
+        end do 
+        close(unit=20)
         run_test = 1
 
     end function 

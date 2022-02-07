@@ -287,9 +287,7 @@ def GMRES_given_jf(func,u,du0,tol,max_iter):
         fu[k] = Cs[k] * fu[k]
     # Here is the BackSubstitution of H by fu to get the 
     # the current guess solution in the Krylov space Vk
-    print(k)
     lmbd = back_substitution(H[:k+1,:k+1],fu[:k+1])
-   # print(H[:k+1,:k+1],fu[:k+1].T)
     return np.dot(Vk[:k+1].T,lmbd)
 
 
@@ -341,29 +339,29 @@ func = test_heat_eq
 
 t0 = time.time()
 
-sol = JFNK_given(test_sys,np.array([0.0,0.0]),1e-10,100)
+#sol = JFNK_given(test_sys,np.array([0.0,0.0]),1e-10,100)
 
 # Sol_naive = GMRES_restart_naive(func,X0,1e-5,100)
 # # t_naive = time.time()
 
-# Sol_given = JFNK_given(func,X0,3e-5,300)
-# t_given = time.time()
+Sol_given = JFNK_given(func,X0,3e-5,300)
+t_given = time.time()
 
 # print("NAIVE-------------------------")
 # #print("solution: ", Sol_naive )
 # print("res:, ", np.linalg.norm(func(Sol_naive)))
 # print("exec_time: ", t_naive - t0)
 
-# print("\nGIVEN-------------------------")
-# print("solution: ", Sol_given)
-# print("res:, ", np.linalg.norm(func(Sol_given)))
-# print("exec_time: ",  t_given - t0 )
+print("\nGIVEN-------------------------")
+print("solution: ", Sol_given)
+print("res:, ", np.linalg.norm(func(Sol_given)))
+print("exec_time: ",  t_given - t0 )
 
 
-# plt.figure()
-# plt.plot(r,Sol_naive,label = "Naive")
-# plt.plot(r,Sol_given,label = "Given")
-# plt.legend()
-# plt.show()
+plt.figure()
+#plt.plot(r,Sol_naive,label = "Naive")
+plt.plot(r,Sol_given,label = "Given")
+plt.legend()
+plt.show()
 
 print(sol)
