@@ -1012,44 +1012,44 @@ function Equation_system_ms (N, x, N_args, args)
    
     if (p_verbose) write(30,*) '[RES] Parsing complete'
     
-    ! Check if physical conditions are respected and value biased if not to 
-    ! Ensure results stablilty
-    if (p_verbose) write(30,*) '[RES] Physical validity check'
+    ! ! Check if physical conditions are respected and value biased if not to 
+    ! ! Ensure results stablilty
+    ! if (p_verbose) write(30,*) '[RES] Physical validity check'
 
-    if (ANY(T_mid < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg T_mid, changing to 100K'
-        T_mid = max(100.0d0,T_mid)
-    end if 
+    ! if (ANY(T_mid < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg T_mid, changing to 100K'
+    !     T_mid = max(100.0d0,T_mid)
+    ! end if 
 
-    if (ANY(T_s < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg T_s, changing to 100K'
-        T_s = max(100.0d0,T_s)
-    end if 
+    ! if (ANY(T_s < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg T_s, changing to 100K'
+    !     T_s = max(100.0d0,T_s)
+    ! end if 
 
-    if (ANY(z_s < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg z_s, changing to 2 R_jup'
-        z_s = max(2.0d0*c_R_jup,z_s)
-    end if 
+    ! if (ANY(z_s < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg z_s, changing to 2 R_jup'
+    !     z_s = max(2.0d0*c_R_jup,z_s)
+    ! end if 
 
-    if (ANY(z_add < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg z_add, changing to R_J'
-        z_add = max(c_R_jup,z_add)
-    end if 
+    ! if (ANY(z_add < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg z_add, changing to R_J'
+    !     z_add = max(c_R_jup,z_add)
+    ! end if 
 
-    if (ANY(z_add > z_s)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
-        z_add = min(z_add,z_s)
-    end if 
+    ! if (ANY(z_add > z_s)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
+    !     z_add = min(z_add,z_s)
+    ! end if 
 
-    if (ANY(rho_mid < rho_add)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
-        rho_mid = max(rho_mid,rho_add)
-    end if  
+    ! if (ANY(rho_mid < rho_add)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
+    !     rho_mid = max(rho_mid,rho_add)
+    ! end if  
 
-    if (ANY(rho_add < rho_s)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
-        rho_add = max(rho_add,rho_s)
-    end if 
+    ! if (ANY(rho_add < rho_s)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
+    !     rho_add = max(rho_add,rho_s)
+    ! end if 
 
     !accretion rate 
     res_10 = (p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)) / p_M_dot

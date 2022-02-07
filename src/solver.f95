@@ -279,7 +279,6 @@ module JFNK
                 Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
         
             else 
-                write(*,*) "STOP"
                 k = k-1
                 exit 
             end if 
@@ -404,8 +403,6 @@ module JFNK
 
             res = norm2(func(N,solve_JFNK,N_args,args))
             
-            write(*,*) "du", du
-            write(*,*) "u", solve_JFNK
             write(*,*) "res", res
             write(*,*) "------------------------"
 
