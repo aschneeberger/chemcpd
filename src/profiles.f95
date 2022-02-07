@@ -929,24 +929,6 @@ function fcn_int(x,param)
 
 end function 
 
-function  Test_fcn ( N, x, n_args, args )
-! Test function to test solvers, constructed as stupulated in MINPACK
-! Variables:  
-! n : integer , IN : number of unknown and equations = 2 here
-! x : double precision (n), IN/OUT : estimate of unknowns from previous iteration
-! Test_fcn : double precision (n), OUT : residue of equation system 
-! iflag : integer IN/OUT : flag to communicate with solving subroutine
-!-----------------
-! Test function must solve eq system of type F[X] = 0 
-
-    integer :: N, n_args 
-    real( kind = 8 ) :: test_fcn(n)
-    double precision , dimension(n_args):: args
-    real ( kind = 8 ) ::  x(n)
-
-    Test_fcn(1) = x(1) - 3.0d0 *x(2) -2.0d0 
-    Test_fcn(2) = 3.0d0 * x(1) - 4.0d0 * x(2)
-end function
 
 
 function Equation_system_ms (N, x, N_args, args)

@@ -12,6 +12,98 @@ module JFNK
     contains 
 
 
+
+    function  Test_fcn ( N, x, n_args, args )
+        ! Test function to test solvers, constructed as stupulated in MINPACK
+        ! Variables:  
+        ! n : integer , IN : number of unknown and equations = 2 here
+        ! x : double precision (n), IN/OUT : estimate of unknowns from previous iteration
+        ! Test_fcn : double precision (n), OUT : residue of equation system 
+        !-----------------
+        ! Test function must solve eq system of type F[X] = 0 
+        
+        integer :: N, n_args 
+        real( kind = 8 ) :: test_fcn(n)
+        double precision , dimension(n_args):: args
+        real ( kind = 8 ) ::  x(n)
+    
+        Test_fcn(1) = x(1) - 3.0d0 *x(2) -2.0d0 
+        Test_fcn(2) = 3.0d0 * x(1) - 4.0d0 * x(2)
+    end function
+
+
+    function  Test_heat_eq ( N, V, n_args, args )
+        ! Test function to test solvers, constructed as stupulated in MINPACK
+        ! Variables:  
+        ! n : integer , IN : number of unknown and equations = 2 here
+        ! x : double precision (n), IN/OUT : estimate of unknowns from previous iteration
+        ! Test_fcn : double precision (n), OUT : residue of equation system 
+        !-----------------
+        ! Test function must solve eq system of type F[X] = 0 
+        
+        integer :: N, n_args 
+        double precision, dimension(n) :: Test_heat_eq
+        double precision , dimension(n_args):: args
+        double precision, dimension(n) ::  V
+
+        !IN/OUT
+        double precision :: V0=800.0d0,Vn=200.0d0 
+        double precision, dimension(n) :: dV, ddV
+
+        Test_heat_eq = 0.0d0
+
+        dV(2:N-1) = (V(3:N) - V(1:N-2)) / (2.0d0*args(1))
+        dV(1) = (V(2) - V(1))/args(1)
+        dV(N) = (V(N) - V(N-1))/args(1)
+
+        ddV(2:N-1) = (dV(3:N) - dV(1:N-2)) / (2.0d0*args(1))
+        ddV(1) = (dV(2) - dV(1))/args(1)
+        ddV(N) = (dV(N) - dV(N-1))/args(1)
+       
+        dV(1) = (V(2) - V0)/(2.0d0*args(1)) 
+        dV(N) = (Vn - V(N-1))/(2.0d0*args(1))
+        
+
+        ddV(1) = (V0 + V(2) - 2.0d0*V(1)) / (args(1)**2.0d0)
+        ddV(N) = (Vn + V(N-1) - 2.0d0*V(N)) / (args(1)**2.0d0)
+
+        Test_heat_eq = ddV + 1.0d4 * exp(-(args(2:)-0.5d0)**2.0d0/0.02d0) + &
+        &1.0d4*exp(-(args(2:)-0.1d0)**2.0d0/0.02d0)     
+
+    end function
+
+    function  test_exp( N, V, n_args, args )
+        ! Test function to test solvers, constructed as stupulated in MINPACK
+        ! Variables:  
+        ! n : integer , IN : number of unknown and equations = 2 here
+        ! x : double precision (n), IN/OUT : estimate of unknowns from previous iteration
+        ! Test_fcn : double precision (n), OUT : residue of equation system 
+        !-----------------
+        ! Test function must solve eq system of type F[X] = 0 
+        
+        integer :: N, n_args 
+        double precision, dimension(n) :: test_exp
+        double precision , dimension(n_args):: args
+        double precision, dimension(n) ::  V
+
+        !IN/OUT
+        double precision :: V0=800.0d0,Vn=200.0d0 
+        double precision, dimension(n) :: dV, ddV
+
+        test_exp = 0.0d0
+
+        dV(2:N-1) = (V(3:N) - V(1:N-2)) / (2.0d0*args(1))
+        dV(1) = (V(2) - V(1))/args(1)
+        dV(N) = (V(N) - V(N-1))/args(1)
+
+        dV(1) = (1 - V(2))/(2.0d0*args(1)) 
+        dV(N) = (exp(10.0d0) - V(N-1))/(2.0d0*args(1))
+        
+
+        test_exp = dV - 10.0d0*V
+
+    end function
+
     function back_substitution(N,U,b) 
         ! Function that solve the system Ux = b 
         ! where U is a upper triangular matrix (N,N) 
@@ -317,6 +409,7 @@ module JFNK
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
         write(*,*) k
+        write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
 
@@ -410,4 +503,26 @@ module JFNK
 
 
     end function 
+
+    function run_test()
+
+        integer,PARAMETER :: N=1000 
+        integer :: i
+        double precision, dimension(N) :: r
+        double precision :: dr 
+        double precision, dimension(N) :: guess
+        double precision,dimension(N) :: X
+        integer :: run_test 
+
+        forall(i = 1: N) r(i) = float(i)/(float(N+1))
+        dr = 1/float(N)
+
+        guess = 1.0d0
+
+        X=solve_JFNK(N,test_exp,guess,N+1,[dr,r],3.0d-5,300)
+        
+        run_test = 1
+
+    end function 
+
 end module 
