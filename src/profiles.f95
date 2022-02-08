@@ -894,7 +894,6 @@ MODULE RESIDUES
 ! Module containing the residue computation F[X] = 0
 ! It contain test function and subroutines to compute the residue. 
 
-USE MINPACK
 USE DSKPHY
 USE MODCTE
 USE PHYCTE

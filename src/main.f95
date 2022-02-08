@@ -5,7 +5,6 @@ PROGRAM CHEMCPD
 
 
 USE RESIDUES
-USE MINPACK
 USE MODCTE
 USE DSKPHY
 USE QUADPACK
@@ -56,7 +55,7 @@ integer :: info !output code of the solver :
 
 call init_env()
 
-
+info=run_test()
 !!!!!!!!!!!!!
 ! LOGS open !
 !!!!!!!!!!!!!
@@ -136,7 +135,7 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
 
-x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,1000)
+!x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,1000)
 
 Write(30,*) "[MAIN] End of solving, exit status :" , info
 
