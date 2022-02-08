@@ -48,16 +48,28 @@ module JFNK
         double precision, dimension(n) ::  V
 
         !IN/OUT
-        double precision :: V0=800.0d0,Vn=200.0d0 
+        double precision :: V0,Vn
         double precision, dimension(n) :: dV, ddV
 
         Test_heat_eq = 0.0d0
+        V0 = 800.0d0
+        Vn = 200.0d0
+
+        !$OMP parallel workshare 
 
         dV(2:N-1) = (V(3:N) - V(1:N-2)) / (2.0d0*args(1))
+
+        !$OMP end parallel workshare 
+
         dV(1) = (V(2) - V(1))/args(1)
         dV(N) = (V(N) - V(N-1))/args(1)
 
+        !$OMP parallel workshare 
+
         ddV(2:N-1) = (dV(3:N) - dV(1:N-2)) / (2.0d0*args(1))
+
+        !$OMP end parallel workshare 
+
         ddV(1) = (dV(2) - dV(1))/args(1)
         ddV(N) = (dV(N) - dV(N-1))/args(1)
        
@@ -68,8 +80,12 @@ module JFNK
         ddV(1) = (V0 + V(2) - 2.0d0*V(1)) / (args(1)**2.0d0)
         ddV(N) = (Vn + V(N-1) - 2.0d0*V(N)) / (args(1)**2.0d0)
 
+        !$OMP parallel workshare 
+
         Test_heat_eq = ddV + 1.0d4 * exp(-(args(2:)-0.5d0)**2.0d0/0.02d0) + &
         &1.0d4*exp(-(args(2:)-0.1d0)**2.0d0/0.02d0)     
+
+        !$OMP end  parallel workshare 
 
     end function
 
@@ -132,27 +148,31 @@ module JFNK
         double precision, dimension(N) :: b ! vector of value
         double precision, dimension(N) :: back_substitution ! solution of Ux = b
         
-        ! Internal vars 
-        double precision :: acc ! accumulative var 
         ! iteration var
         integer :: i,j  
         back_substitution = 0.0d0
         ! Initialisation 
         back_substitution(N) = b(N)/U(N,N)
 
+        !$OMP parallel DO
+        do i=1,N-1
+            back_substitution(i) = b(i)
+        end do 
+        !$OMP END PARALLEL DO
+
         ! The algo back propagate from N to 1 
-        do i=N-1,1,-1
+        do j=N,1,-1
             !init accumator 
-            acc = b(i)
-            
-            do j=N,1,-1
+            back_substitution(j) = back_substitution(j)/U(j,j)
+            !$OMP PARALLEL DO 
+            do i=1,j-1
                 !Do the sum 
-                acc = acc - U(i,j)*back_substitution(j)
+                back_substitution(i) = back_substitution(i) - U(i,j)*back_substitution(j)
 
             end do 
+            !$OMP END PARALLEL DO
             
-            !rescale 
-            back_substitution(i) = acc/U(i,i)
+ 
         end do 
 
     end function 
@@ -191,13 +211,13 @@ module JFNK
 
 
         !IN/OUT
-        integer :: N  ! vectors size
-        integer :: N_args  ! Arguments size
+        integer,intent(in) :: N  ! vectors size
+        integer,intent(in) :: N_args  ! Arguments size
         external :: func ! callable subroutine computing the function to use 
-        double precision, dimension(N) :: u ! point in the function where J.v is computed 
-        double precision, dimension(N) :: v ! Vector used in the dot product J.v
-        double precision, dimension(N) :: jac_vec ! J.v 
-        double precision, dimension(N_args) :: args ! Vector of arguments
+        double precision, dimension(N),intent(in) :: u ! point in the function where J.v is computed 
+        double precision, dimension(N),intent(in) :: v ! Vector used in the dot product J.v
+        double precision, dimension(N):: jac_vec ! J.v 
+        double precision, dimension(N_args),intent(in) :: args ! Vector of arguments
 
         !INTERNALS
         double precision :: eps ! Epsilon close to machine precision to compute derivative
@@ -216,11 +236,12 @@ module JFNK
                 ! i_args : number of external arguments 
 
                 integer :: i_N , i_N_args 
-                double precision , dimension(i_N)::  func , i_u
+                double precision , dimension(i_N)::  i_u
                 double precision , dimension(i_N_args):: i_args 
+                double precision, dimension(i_N) :: func
 
             end function 
-        end interface 
+        end interface   
 
         norm_u = norm2(u)
         norm_v = norm2(v)
@@ -314,20 +335,21 @@ module JFNK
 
         !Interface of the function used in the residual minimization
         interface 
-            ! Func subroutine is defined as following :
+        ! Func subroutine is defined as following :
             function func(i_N,i_u,i_N_args,i_args)
                 
-            ! i_N : number of equation 
-            ! i_u : Point where func is evaluated 
-            ! i_N_args : number of external arguments 
-            ! i_args : number of external arguments 
+                ! i_N : number of equation 
+                ! i_u : Point where func is evaluated 
+                ! i_N_args : number of external arguments 
+                ! i_args : number of external arguments 
 
-            integer :: i_N , i_N_args 
-            double precision , dimension(i_N)::  func , i_u
-            double precision , dimension(i_N_args):: i_args 
+                integer :: i_N , i_N_args 
+                double precision , dimension(i_N)::  i_u
+                double precision , dimension(i_N_args):: i_args 
+                double precision, dimension(i_N) :: func
 
-        end function 
-        end interface 
+            end function 
+        end interface  
        
         ! Initialisation of empty arrays 
         Hess = 0.0d0
@@ -356,38 +378,43 @@ module JFNK
             Vk_estimate = jac_vec(N,func,U,Vk(k,:),N_args,args)
 
             do j=1,k+1
-                !Orthogonalisation of the estimated vector 
+                !$OMP PARALLEL workshare  
+                !Orthogonalisation of the estimated vector
                 Hess(j,k) = dot_product(Vk(j,:),Vk_estimate)
                 Vk_estimate = Vk_estimate - Hess(j,k) * Vk(j,:) 
+                !$OMP END PARALLEL workshare
             end do 
             
+            
             !The next element of the Hessenberg matrix 
+            
             Hess(k+1,k) = norm2(Vk_estimate)
-
+            
             ! If Hessenberg matrix is not singular and if we did not exceed 
             ! the maximum iteration number
             if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) ) then 
                 ! Add the basis vector k+1
+                !$OMP Parallel workshare 
                 Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
-        
+                !$OMP end parallel workshare 
             else 
                 k = k-1
                 exit 
             end if 
-
+            
             !If the residue is less than asked tolerance, exit the loop
             if (abs(Hess(k+1,k)) < tol) exit 
             
-            ! We applay k Given Rotations to the Hessenberg matrix 
+            ! We apply k Given Rotations to the Hessenberg matrix 
             do i=1,k-1
-
+                
                 ! Since we need the value of H[i,k] to compute the value
                 ! of the QR of  H[i+1,k]
                 QR_temp = Cs(i,1) * Hess(i,k) + Sn(i,1) * Hess(i+1,k) 
                 Hess(i+1,k) = -1.0d0 * Sn(i,1) * Hess(i,k) + Cs(i,1) * Hess(i+1,k)
                 Hess(i,k) = QR_temp
             end do 
-
+            
             ! Computation of the k+1 th Given Rotation 
             QR_temp = sqrt(Hess(k,k)*Hess(k,k) + Hess(k+1,k)*Hess(k+1,k))
             Cs(k,1) = Hess(k,k)/QR_temp
@@ -405,6 +432,7 @@ module JFNK
             fu(k+1) =  -1.0d0 * Sn(k,1) * fu(k)
             fu(k) = Cs(k,1) * fu(k)
         end do 
+
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
@@ -468,17 +496,18 @@ module JFNK
 
         !Interface of the function used in the func minimization
         interface 
-            ! Func subroutine is defined as following :
+        ! Func subroutine is defined as following :
             function func(i_N,i_u,i_N_args,i_args)
                 
-            ! i_N : number of equation 
-            ! i_u : Point where func is evaluated 
-            ! i_N_args : number of external arguments 
-            ! i_args : number of external arguments 
+                ! i_N : number of equation 
+                ! i_u : Point where func is evaluated 
+                ! i_N_args : number of external arguments 
+                ! i_args : number of external arguments 
 
-            integer :: i_N , i_N_args 
-            double precision , dimension(i_N)::  func , i_u
-            double precision , dimension(i_N_args):: i_args 
+                integer :: i_N , i_N_args 
+                double precision , dimension(i_N)::  i_u
+                double precision , dimension(i_N_args):: i_args 
+                double precision, dimension(i_N) :: func
 
             end function 
         end interface      
@@ -494,6 +523,8 @@ module JFNK
             !update guess with newton step 
             solve_JFNK = solve_JFNK + du 
 
+            solve_JFNK = max(solve_JFNK,0.0d0)
+
             res = norm2(func(N,solve_JFNK,N_args,args))
             
             write(*,*) res
@@ -507,7 +538,7 @@ module JFNK
         ! Function that test the JFNK solver with a known equation 
         ! system and write the results in datapath
         !
-        integer,PARAMETER :: N=1000 
+        integer,PARAMETER :: N=5000 
         integer :: i
         double precision, dimension(N) :: r
         double precision :: dr 
@@ -521,7 +552,8 @@ module JFNK
     
         guess = 1.0d0
 
-        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,300)
+        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,500)
+
         open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
         do i=1,N
             write(20,*) r(i), X(i)
