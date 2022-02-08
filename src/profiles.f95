@@ -1,3 +1,6 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
+
 ! The system to solve is derived from Makalkin et al 1995 and 2014, there are 8 equations to solbve 
 ! with 8 unknowns: 
 !     Σ: the surface density 
@@ -25,9 +28,8 @@ USE MODCTE
 implicit none
 
 
-
 contains
-subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
+subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
 ! Compute the mean planck opacity table as function of the temprature only, 
 ! from makalkin et al 2006 . To avoid brutal disconituity, all parts 
 ! of the opcity table are weighted with error functions, to have transition of p_sgm K,
@@ -38,7 +40,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 ! -------
 !
 ! N : Integer : grid size 
-! Temp(N) : double precision : Temperature at witch the opqcity is computed
+! Temp_in(N) : double precision : Temperature at witch the opqcity is computed
 !
 ! --------
 ! Output :
@@ -51,19 +53,20 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 
     !IN/OUT
     integer , intent(in) :: N 
-    double precision , intent(in) , dimension(N) :: Temp 
+    double precision , intent(in) , dimension(N) :: Temp_in 
     double precision , intent(out) , dimension(N) :: beta 
     double precision , intent(out) , dimension(N) :: kappa_0 
     double precision , intent(out) , dimension(N) :: kappa_p
 
     
-    !INTERNALS
-    integer :: i
     ! Intermediary variables 
     double precision , dimension(N) :: kappa_p1 , kappa_p2, kappa_p3, kappa_p4 ! for erf sum 
     double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
     double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
+    double precision, dimension(N) :: Temp
     double precision :: sgm = 20.0d0
+
+    Temp = max(0.0d0,Temp_in)
 
     !Computation of kappa_p using erf weights to fill discontinuitis
 
@@ -88,12 +91,13 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 
 
     !Computation of beta using erf weights to fill discontinuitis
-    kappa_p1 = 0.5d0 * 2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_p2 = 0.25d0 * 0.6d0 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p3 = 0.25d0 * 0.5d0 * (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
-    kappa_p4 = 0.5d0 * 0.75 * (erf((Temp-680.0d0)/sgm) +1.0d0 )
+    beta_1 = 0.5d0 * 2.1d0 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
+    beta_2 = 0.25d0 * 0.6d0 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    beta_3 = 0.25d0 * 0.5d0 * (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
+    beta_4 = 0.5d0 * 0.75 * (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
-    beta = beta_1 + beta_2 + beta_3 + beta_4  ! The final value is the sum of all weighted cased 
+    ! The final value is the sum of all weighted cased 
+    beta = beta_1 + beta_2 + beta_3 + beta_4
      
 end subroutine
 
@@ -236,14 +240,13 @@ end function
 
 
 
-function flux_visc(N, r, omegak, cap_lambda) 
+function flux_visc(N, omegak, cap_lambda) 
 !Compute the energy flux at photosphere altitute from viscous heating inside the disk
 !-------
 !Inputs: 
 !-------
 !
 ! N : integer : size of the grid
-! r(N) : double precision : array of radii from disk center [m]
 ! omegak(N) : double precision : keplerian pulsation corresponding to r [s-1]
 ! cap_lambda(N) : double precision : angular momentum factor corresponding to r 
 !
@@ -255,7 +258,6 @@ function flux_visc(N, r, omegak, cap_lambda)
 
     !IN/OUT
     integer :: N 
-    double precision , dimension(N) :: r
     double precision , dimension(N) :: omegak
     double precision , dimension(N) :: cap_lambda
     double precision , dimension(N) :: flux_visc 
@@ -399,7 +401,7 @@ end function
 ! The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table
 
 
-function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
+function temp_surface(N,kappa_p,sigma,f_vis,f_acc,f_planet)
 ! Compute the disk temperature at the photosphere altitude, defined to at 
 ! an optical depth τ=2/3. It is assumed that energy flux come from accretion 
 ! heating, viscous heating, planetary luminosity and sourounding PSN temperature. 
@@ -411,7 +413,6 @@ function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
 !
 ! N : integer : size of the grid
 ! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
-! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
 ! sigma(N) : double precision : Gas surface density [Kg.m-2]
 ! f_vis(N) : double precision : Viscous heating power [W] 
 ! f_acc(N) : double precision : Accretion heating power [W] 
@@ -425,7 +426,7 @@ function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
 
     !IN/OUT
     integer :: N
-    double precision , dimension(N) :: kappa_p , beta ! opacity terms 
+    double precision , dimension(N) :: kappa_p  ! opacity terms 
     double precision , dimension(N) :: sigma ! surface density 
     double precision , dimension(N) :: f_vis, f_acc, f_planet ! energy powers 
     double precision , dimension(N) :: temp_surface  !surface temperature
@@ -440,7 +441,7 @@ function temp_surface(N,kappa_p,beta,sigma,f_vis,f_acc,f_planet)
 
 end function
 
-function temp_mid_equation(N,kappa_p,beta,kappa_0,cap_lambda,q_s,omegak)
+function temp_mid_equation(N,beta,kappa_0,cap_lambda,q_s,omegak)
 ! Right hand side of equation 31 (or 32 ), midplane temperature can not be isolated, 
 ! This function is used in the solving subroutine to find the midplane temperature
 ! It is taken from makalkin 2014. It assume that the disk is addiabatique until 
@@ -451,7 +452,6 @@ function temp_mid_equation(N,kappa_p,beta,kappa_0,cap_lambda,q_s,omegak)
 !------
 !
 ! N : integer : size of the grid
-! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
 ! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
 ! kappa_0(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the prefactor [m2.Kg-1]
 ! cap_lambda(N) : double precision : Angular mommentum factor Λ 
@@ -466,7 +466,7 @@ function temp_mid_equation(N,kappa_p,beta,kappa_0,cap_lambda,q_s,omegak)
 
     !IN/OUT 
     integer :: N
-    double precision , dimension(N) :: kappa_p , beta , kappa_0 ! mean opacity vars 
+    double precision , dimension(N) ::  beta , kappa_0 ! mean opacity vars 
     double precision , dimension(N) :: cap_lambda !angular mommentum factor Λ
     double precision , dimension(N) :: q_s ! mass coordinate of photosphere 
     double precision , dimension(N) :: temp_mid_equation  ! midplane temp residual 
@@ -551,24 +551,10 @@ function rho_add_23(N,rho_s,z_s,z_add,T_mid,omegak)
     
     ! Internal vars 
     double precision , dimension(N) :: h_s 
-    character (len=50) :: filename                  !fname 
-    integer :: i ! index var
 
     h_s = gas_scale_height(N,T_mid,omegak)
 
     rho_add_23 = rho_s * exp( (c_gamma / 2.0d0) * ( z_s*z_s - z_add*z_add ) / (h_s*h_s) )
-
-    ! Write debug file of rho_add_23
-    ! if ( modulo(m_ncalls, p_inter_rate) == 0) then
-    !     !create fname
-    !     write(filename,'(a,I5.5,a)') "../Data/rho_add_23_",m_ncalls,'.dat'
-    !     open(unit=50, file=filename,status='new')
-    !     write(50,*) 'rho_add_23 z_s² z_add² h_s² '
-    !     do i=1,p_Nr
-    !         write(50,*) rho_add_23(i),z_s(i)*z_s(i),z_add(i)*z_add(i),h_s(i)*h_s(i)
-    !     end do 
-    !     close(unit=50)
-    ! end if 
     
 end function 
 
@@ -824,25 +810,23 @@ subroutine Init_profiles(N,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid
 
     omegak = kep_puls(N,r)
 
-    F_vis = flux_visc(N,r,omegak,cap_lambda)
+    F_vis = flux_visc(N,omegak,cap_lambda)
 
     F_acc = flux_accretion(N,r,R_c)
 
     ! Real first guesses 
 
-    call Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
+    call Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
 
 end subroutine
 
-subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
+subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
     
     !IN/OUT
     integer , intent(in) :: N 
     double precision , intent(in) , dimension(N) :: r
     double precision , intent(in) , dimension(N) :: cap_lambda
     double precision , intent(in) , dimension(N) :: omegak
-    double precision , intent(in) , dimension(N) :: F_vis
-    double precision , intent(in) , dimension(N) :: F_acc 
     double precision , intent(out) , dimension(N) :: T_mid
     double precision , intent(out) , dimension(N) :: T_s
     double precision , intent(out) , dimension(N) :: rho_mid
@@ -854,7 +838,6 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,
 
     !INTERNAL VARS 
 
-    integer ::i !index variable 
     double precision , dimension(N) :: c_s ! mid plane sound speed 
     double precision , dimension(N) :: h ! gas scale height 
     double precision , dimension(N) :: mu ! dynamical viscosity 
@@ -949,28 +932,9 @@ function fcn_int(x,param)
 
 end function 
 
-subroutine Test_fcn ( N, x, res ,iflag, n_args, args )
-! Test function to test solvers, constructed as stupulated in MINPACK
-! Variables:  
-! n : integer , IN : number of unknown and equations = 2 here
-! x : double precision (n), IN/OUT : estimate of unknowns from previous iteration
-! res : double precision (n), OUT : residue of equation system 
-! iflag : integer IN/OUT : flag to communicate with solving subroutine
-!-----------------
-! Test function must solve eq system of type F[X] = 0 
-
-    integer :: N, n_args 
-    real( kind = 8 ) :: res(n)
-    double precision , dimension(n_args):: args
-    integer :: iflag
-    real ( kind = 8 ) ::  x(n)
-
-    res(1) = -args(1) + x(1)**2 - 3*x(2)
-    res(2) = args(2)*x(1)- 4*x(2)
-end subroutine
 
 
-subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
+function Equation_system_ms (N, x, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
 ! photosurface temperature profile along with surface temperature. 
 ! Each residue is named from the original paper equation number, 
@@ -990,18 +954,13 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
 ! args(N_args) : Integer, IN :
 !    Vector of [cap_lambda,omegak,F_vis,F_acc,r], constant arguments throughout the resolution
 !
-! fvec(N) : double precision, OUT :
+! Equation_system_ms(N) : double precision, OUT :
 !   vector of equation system residue: [res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39]
-!
-! iflag : integer IN/OUT :
-!   flag to communicate with solving subroutine api.
-!   if 0 : only print X 
-!   if 1 : compute residues 
 
     !IN/OUT
-    integer :: N , iflag , i
+    integer :: N , i
     integer :: N_args                                 
-    double precision , dimension(N)::  fvec , x
+    double precision , dimension(N)::  Equation_system_ms , x
     DOUBLE PRECISION , DIMENSION(N_args):: args 
     CHARACTER (len=255) :: filename
     
@@ -1038,44 +997,44 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
    
     if (p_verbose) write(30,*) '[RES] Parsing complete'
     
-    ! Check if physical conditions are respected and value biased if not to 
-    ! Ensure results stablilty
-    if (p_verbose) write(30,*) '[RES] Physical validity check'
+    ! ! Check if physical conditions are respected and value biased if not to 
+    ! ! Ensure results stablilty
+    ! if (p_verbose) write(30,*) '[RES] Physical validity check'
 
-    if (ANY(T_mid < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg T_mid, changing to 100K'
-        T_mid = max(100.0d0,T_mid)
-    end if 
+    ! if (ANY(T_mid < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg T_mid, changing to 100K'
+    !     T_mid = max(100.0d0,T_mid)
+    ! end if 
 
-    if (ANY(T_s < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg T_s, changing to 100K'
-        T_s = max(100.0d0,T_s)
-    end if 
+    ! if (ANY(T_s < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg T_s, changing to 100K'
+    !     T_s = max(100.0d0,T_s)
+    ! end if 
 
-    if (ANY(z_s < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg z_s, changing to 2 R_jup'
-        z_s = max(2.0d0*c_R_jup,z_s)
-    end if 
+    ! if (ANY(z_s < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg z_s, changing to 2 R_jup'
+    !     z_s = max(2.0d0*c_R_jup,z_s)
+    ! end if 
 
-    if (ANY(z_add < 0.0 )) then 
-        write(30,*) '[RES] Warning Unphysical occurance of neg z_add, changing to R_J'
-        z_add = max(c_R_jup,z_add)
-    end if 
+    ! if (ANY(z_add < 0.0 )) then 
+    !     write(30,*) '[RES] Warning Unphysical occurance of neg z_add, changing to R_J'
+    !     z_add = max(c_R_jup,z_add)
+    ! end if 
 
-    if (ANY(z_add > z_s)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
-        z_add = min(z_add,z_s)
-    end if 
+    ! if (ANY(z_add > z_s)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of z_add>z_s, changing z_add to min(z_s,z_add)'
+    !     z_add = min(z_add,z_s)
+    ! end if 
 
-    if (ANY(rho_mid < rho_add)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
-        rho_mid = max(rho_mid,rho_add)
-    end if  
+    ! if (ANY(rho_mid < rho_add)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of rho_m<rho_add, changing rho_mid to max(rho_mid,rho_add)'
+    !     rho_mid = max(rho_mid,rho_add)
+    ! end if  
 
-    if (ANY(rho_add < rho_s)) then 
-        write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
-        rho_add = max(rho_add,rho_s)
-    end if 
+    ! if (ANY(rho_add < rho_s)) then 
+    !     write(30,*) '[RES] WARNING Unphysical occurance of rho_add<rho_s, changing rho_add to max(rho_s,rho_add)'
+    !     rho_add = max(rho_add,rho_s)
+    ! end if 
 
     !accretion rate 
     res_10 = (p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)) / p_M_dot
@@ -1086,7 +1045,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
-    res_17 = (T_s - temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet) ) /T_s
+    res_17 = (T_s - temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet) ) /T_s
     if (p_verbose) write(30,*) '[RES] res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
@@ -1103,7 +1062,7 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,kappa_p,beta,kappa_0,cap_lambda,Q_s,omegak)!&
+    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak)!&
     !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
@@ -1116,16 +1075,18 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
     if (p_verbose) write(30,*) '[RES] res_39 complete'
 
     ! concatenate everyting 
-    fvec = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
+    Equation_system_ms = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
     if (p_verbose) write(30,*) '[RES] Serelizing complete'
-    
-    !Every p_inter_rate calls, write intermediates files for debugging
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Every p_inter_rate calls, write intermediates files for debugging!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     if ( modulo(r_ncalls, p_inter_rate) == 0) then 
         !Write the temporary solution 
         write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",r_ncalls,'.dat'
         
-        test_temp_surf = temp_surface(p_Nr,kappa_p,beta,sigma,F_vis,F_acc,F_planet)
+        test_temp_surf = temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet)
 
         if (p_verbose) write(30,*) '    Writing intermediate sol file'
         
@@ -1161,6 +1122,6 @@ subroutine Equation_system_ms (N, x, fvec ,iflag, N_args, args)
 
     if (p_verbose) write(30,*) "[RES] Exiting Residue"
     r_ncalls = r_ncalls+1
-end subroutine 
+end function 
 
 end module 

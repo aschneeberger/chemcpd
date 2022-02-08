@@ -10,12 +10,12 @@ from astropy.table import Table
 import os 
 import astropy.constants as cte
 
-DIRECTORY  = '../Archives/' + sys.argv[1]
+DIRECTORY  = sys.argv[1]
 FILENAME = sys.argv[2] 
 
 def Parse(dir,fname) :
     """
-    Read a data file in a table format en return it as an astropy table
+    Read a data file in a table format en return it as./D    an astropy table
     """
     data_table = Table.read(dir+'/'+fname, format = 'ascii')
 

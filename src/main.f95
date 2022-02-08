@@ -1,3 +1,5 @@
+!! @author : Antoine Schneeberger 
+!! @mail : antoine.schneeberger@lam.fr
 
 PROGRAM CHEMCPD 
 
@@ -9,6 +11,7 @@ USE DSKPHY
 USE QUADPACK
 USE PARTFUN
 USE ENV
+USE JFNK
 
 IMPLICIT NONE 
 
@@ -34,12 +37,8 @@ double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
 DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X ! array containin all variables (8*p_Nr) 
-DOUBLE PRECISION , dimension(p_Nr*8) :: fvec ! Residues array 
-double precision :: tol = 1.0d-2 !asked relative error in the resolution 
 double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
 
-!Test variables
-double precision , dimension(2) :: x_test = [1.0d0,2.0d0], fvec_test, args_test=[-6.0d0,2.0d0]
 
 integer :: info !output code of the solver : 
 !    0, improper input parameters.
@@ -121,26 +120,26 @@ close(unit=10)
 Write(30,*) "[MAIN] Guesses Written "
 
 !!!!!!!!!!!!!!!!!!!!!!!!
-!      Resolution      ! 
+!      Resolution      !
 !!!!!!!!!!!!!!!!!!!!!!!!
+
 
 !Create the variable to be parsed in the solver subroutine 
 x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 
+
 !Create the argument to be parsed in Equation_system_ms
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-write(30,*) "[MAIN] Begining test function solving"
-
-!Testing the method before launching, used for self written subroutines
-call hybrd1 (Test_fcn, 2, x_test, fvec_test, tol, info , 2 , args_test)
-write(30,*) "[MAIN] End of test function solving with results" , x_test, fvec_test, "and exit code" ,info 
 
 Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
-call hybrd1 (Equation_system_ms, p_Nr*8, x, fvec, tol, info , 5*p_Nr , args)
+
+x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,1000)
+
 Write(30,*) "[MAIN] End of solving, exit status :" , info
+
 !Parse the solution
 sigma = x(1 : p_Nr)
 T_mid = x(p_Nr+1 : 2*p_Nr)

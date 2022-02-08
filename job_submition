@@ -21,15 +21,12 @@ export NETCDF=/libraries/libcalcul/netcdf/
 source /apps/intel/bin/ifortvars.sh intel64
 source /apps/intel/bin/iccvars.sh intel64
 
-echo 'ok'
-
 path=/home/aschneeberger
 cd $path 
 
 source virtualenvwrapper.sh
 workon chemcpd36
 
-echo 'ok'
 
 export OMP_NUM_THREAD=4
 

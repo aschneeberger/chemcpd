@@ -822,7 +822,7 @@ subroutine qagi ( f, bound, inf, epsabs, epsrel, result, abserr, neval, ier )
   double precision bound
   double precision b1
   double precision b2
-  double precision correc
+  double precision :: correc = 0.0d0
   double precision defabs
   double precision defab1
   double precision defab2
@@ -866,7 +866,7 @@ subroutine qagi ( f, bound, inf, epsabs, epsrel, result, abserr, neval, ier )
   double precision res3la(3)
   double precision rlist(limit)
   double precision rlist2(52)
-  double precision small
+  double precision :: small = 0.0d0
 !
 !  Test on validity of parameters.
 !
@@ -1388,7 +1388,7 @@ subroutine qagp ( f, a, b, npts2, points, epsabs, epsrel, result, abserr, &
   double precision blist(limit)
   double precision b1
   double precision b2
-  double precision correc
+  double precision :: correc = 0.0d0
   double precision defabs
   double precision defab1
   double precision defab2
@@ -1420,7 +1420,7 @@ subroutine qagp ( f, a, b, npts2, points, epsabs, epsrel, result, abserr, &
   integer j
   integer jlow
   integer jupbnd
-  integer k
+  integer :: k = 1
   integer ksgn
   integer ktmin
   integer last
@@ -2041,7 +2041,7 @@ subroutine qags ( f, a, b, epsabs, epsrel, result, abserr, neval, ier )
   double precision blist(limit)
   double precision b1
   double precision b2
-  double precision correc
+  double precision :: correc = 0.0d0
   double precision defabs
   double precision defab1
   double precision defab2
@@ -2084,7 +2084,7 @@ subroutine qags ( f, a, b, epsabs, epsrel, result, abserr, neval, ier )
   double precision res3la(3)
   double precision rlist(limit)
   double precision rlist2(52)
-  double precision small
+  double precision :: small = 0.0d0
 !
 !  The dimension of rlist2 is determined by the value of
 !  limexp in QEXTR (rlist2 should be of dimension
@@ -3262,7 +3262,7 @@ subroutine qawfe ( f, a, omega, integr, epsabs, limlst, limit, maxp1, &
   integer iord(limit)
   integer ktmin
   integer l
-  integer ll
+  integer :: ll = 1
   integer lst
   integer momcom
   integer nev
@@ -4693,6 +4693,9 @@ subroutine qc25o ( f, a, b, omega, integr, nrmom, maxp1, ksave, result, &
 
   if ( nrmom < momcom ) then
     m = nrmom + 1
+  else 
+    m = nrmom 
+    write(*,*) "[QUAD] WARNING M SET TO NRMOM AT LINE 4698"
   end if
 
   if ( momcom < maxp1 - 1 .and. nrmom >= momcom ) then
@@ -5773,7 +5776,7 @@ subroutine qfour ( f, a, b, omega, integr, epsabs, epsrel, limit, icall, &
   double precision b1
   double precision b2
   double precision chebmo(maxp1,25)
-  double precision correc
+  double precision :: correc = 0.0d0
   double precision defab1
   double precision defab2
   double precision defabs
@@ -5782,7 +5785,7 @@ subroutine qfour ( f, a, b, omega, integr, epsabs, epsrel, limit, icall, &
   double precision elist(limit)
   double precision epsabs
   double precision epsrel
-  double precision erlarg
+  double precision :: erlarg = 0.0d0
   double precision erlast
   double precision errbnd
   double precision errmax
@@ -5790,7 +5793,7 @@ subroutine qfour ( f, a, b, omega, integr, epsabs, epsrel, limit, icall, &
   double precision erro12
   double precision error2
   double precision errsum
-  double precision ertest
+  double precision :: ertest = 0.0d0
   logical extall
   logical extrap
   double precision, external :: f
@@ -8551,6 +8554,9 @@ function qwgto ( x, omega, p2, p3, p4, integr )
     qwgto = cos ( omega * x )
   else if ( integr == 2 ) then
     qwgto = sin ( omega * x )
+  else 
+    write(*,*) "[QUAD] WARNING QWGTO SET TO 0.0d0 AT LINE 8555"
+    qwgto = 0.0d0
   end if
 
   ! Silence warnings about unused dummy arguments
@@ -8610,6 +8616,9 @@ function qwgts ( x, a, b, alfa, beta, integr )
     qwgts = ( x - a )**alfa * ( b - x )**beta * log ( b - x )
   else if ( integr == 4 ) then
     qwgts = ( x - a )**alfa * ( b - x )**beta * log ( x - a ) * log ( b - x )
+  else 
+    Write(*,*) "[QUAD] WARNING QWFTS WEIGHT SET TO 0 AT LINE 8614" 
+    qwgts = 0.0d0
   end if
 
   return
