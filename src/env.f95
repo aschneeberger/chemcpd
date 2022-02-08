@@ -21,8 +21,8 @@ Module ENV
         
         ! INTERNALS
         character(len=255) :: path       ! Current working path  
-        character(len=:), ALLOCATABLE :: datapath   ! Generated datapath
-        character(len=:), ALLOCATABLE :: dir_elems   ! Generated datapath
+        character(len=255) :: datapath   ! Generated datapath
+        character(len=255) :: dir_elems   ! Generated datapath
         
         ! Get the working directory 
         call getcwd(path) 

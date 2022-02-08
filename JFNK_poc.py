@@ -353,7 +353,6 @@ t_given = time.time()
 # print("exec_time: ", t_naive - t0)
 
 print("\nGIVEN-------------------------")
-print("solution: ", Sol_given)
 print("res:, ", np.linalg.norm(func(Sol_given)))
 print("exec_time: ",  t_given - t0 )
 
@@ -364,4 +363,3 @@ plt.plot(r,Sol_given,label = "Given")
 plt.legend()
 plt.show()
 
-print(sol)

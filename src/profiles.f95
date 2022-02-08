@@ -29,7 +29,7 @@ implicit none
 
 
 contains
-subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
+subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
 ! Compute the mean planck opacity table as function of the temprature only, 
 ! from makalkin et al 2006 . To avoid brutal disconituity, all parts 
 ! of the opcity table are weighted with error functions, to have transition of p_sgm K,
@@ -40,7 +40,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 ! -------
 !
 ! N : Integer : grid size 
-! Temp(N) : double precision : Temperature at witch the opqcity is computed
+! Temp_in(N) : double precision : Temperature at witch the opqcity is computed
 !
 ! --------
 ! Output :
@@ -53,7 +53,7 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
 
     !IN/OUT
     integer , intent(in) :: N 
-    double precision , intent(in) , dimension(N) :: Temp 
+    double precision , intent(in) , dimension(N) :: Temp_in 
     double precision , intent(out) , dimension(N) :: beta 
     double precision , intent(out) , dimension(N) :: kappa_0 
     double precision , intent(out) , dimension(N) :: kappa_p
@@ -63,7 +63,10 @@ subroutine opacity_table(N,Temp,beta,kappa_0,kappa_p)
     double precision , dimension(N) :: kappa_p1 , kappa_p2, kappa_p3, kappa_p4 ! for erf sum 
     double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
     double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
+    double precision, dimension(N) :: Temp
     double precision :: sgm = 20.0d0
+
+    Temp = max(0.0d0,Temp_in)
 
     !Computation of kappa_p using erf weights to fill discontinuitis
 

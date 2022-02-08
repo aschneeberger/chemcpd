@@ -28,7 +28,7 @@ module JFNK
         double precision , dimension(n_args):: args
         real ( kind = 8 ) ::  x(n)
     
-        Test_fcn(1) = x(1) - 3.0d0 *x(2) -2.0d0 
+        Test_fcn(1) = x(1) - 3.0d0 *x(2) -2.0d0/args(1)
         Test_fcn(2) = 3.0d0 * x(1) - 4.0d0 * x(2)
     end function
 
@@ -88,8 +88,7 @@ module JFNK
         double precision, dimension(n) ::  V
 
         !IN/OUT
-        double precision :: V0=800.0d0,Vn=200.0d0 
-        double precision, dimension(n) :: dV, ddV
+        double precision, dimension(n) :: dV
 
         test_exp = 0.0d0
 
@@ -497,6 +496,7 @@ module JFNK
 
             res = norm2(func(N,solve_JFNK,N_args,args))
             
+            write(*,*) res
 
         end do 
 
