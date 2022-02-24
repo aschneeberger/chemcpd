@@ -436,8 +436,8 @@ module JFNK
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
-        ! write(*,*) k
-        ! write(*,*) 'GMRES res', Hess(k,k)
+        write(*,*) k
+        write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
         
@@ -523,7 +523,7 @@ module JFNK
             !update guess with newton step 
             solve_JFNK = solve_JFNK + du 
 
-            solve_JFNK = max(solve_JFNK,0.0d0)
+            !solve_JFNK = max(solve_JFNK,0.0d0)
 
             res = norm2(func(N,solve_JFNK,N_args,args))
             
@@ -538,7 +538,7 @@ module JFNK
         ! Function that test the JFNK solver with a known equation 
         ! system and write the results in datapath
         !
-        integer,PARAMETER :: N=5000 
+        integer,PARAMETER :: N=3000 
         integer :: i
         double precision, dimension(N) :: r
         double precision :: dr 
@@ -552,7 +552,7 @@ module JFNK
     
         guess = 1.0d0
 
-        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,500)
+        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,300)
 
         open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
         do i=1,N
