@@ -435,9 +435,9 @@ function temp_surface(N,kappa_p,sigma,f_vis,f_acc,f_planet)
     double precision , dimension(N) :: prefactor ! prefactor in equation 
 
 
-    prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
+    prefactor = (1.0d0 + 1.0d0/(2.0d0 * kappa_p * sigma) ) / c_sigma_sb 
 
-    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* f_planet) + p_T_neb)**(0.25d0)
+    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* max(f_planet,0.0d0)) + p_T_neb**4.0d0)**(0.25d0)
 
 end function
 
@@ -731,7 +731,7 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
 
     zeta_a = z_add/z_s 
 
-    integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
+    integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( sqrt(b_s) ) - erf(zeta_a * sqrt(b_s)) )
 
     ! final surface density 
     surface_density = 2.0d0 * z_add * rho_add * integration_add + 2.0d0 * z_s * rho_s * integration_s
@@ -850,7 +850,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     ! From equation 4 of anderson et al 2021 
     T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + &
-    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25
+    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 * 100.0d0
     T_s = T_mid / 5.0d0
 
     c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
@@ -931,7 +931,42 @@ function fcn_int(x,param)
 
 end function 
 
+subroutine correct_guess(N,x) 
+    ! Subroutine that correct the guess to give a physicaly correct guess 
+    ! This subroutine is a quick test of the convergence of the algorithm 
+    
+    integer, INTENT(IN) :: N
+    double precision, INTENT(INOUT), dimension(N) :: x 
+    double precision , DIMENSION(p_Nr) :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
 
+    sigma = x(1 : p_Nr)
+    T_mid = x(p_Nr+1 : 2*p_Nr)
+    T_s = x(2*p_Nr+1 : 3*p_Nr)
+    z_s = x(3*p_Nr+1 : 4*p_Nr) 
+    z_add = x(4*p_Nr+1 : 5*p_Nr)
+    rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+    rho_add = x(6*p_Nr+1 : 7*p_Nr)
+    rho_s = x(7*p_Nr+1 : 8*p_Nr)
+
+    T_s = min(T_mid*0.8d0 , T_s)
+
+    T_mid = max(100d0,T_mid)
+    T_s = max(50.0d0,T_s)
+
+    z_s = max(2.0d0*c_R_jup,z_s)
+
+    z_add = min(z_add,z_s*0.8d0)
+
+    z_add = max(c_R_jup,z_add)
+
+    rho_add = max(rho_add,rho_s)
+    rho_mid = max(rho_mid,rho_add)
+
+    sigma = max(0.0d0,sigma)
+
+    x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s] 
+
+end subroutine  
 
 function Equation_system_ms (N, x, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 

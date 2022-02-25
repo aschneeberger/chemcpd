@@ -7,6 +7,7 @@ module JFNK
     ! at the end of the day. 
     USE MODCTE
     USE ENV 
+    USE RESIDUES
 
     implicit None 
 
@@ -521,7 +522,9 @@ module JFNK
             du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-30,max_iter)
 
             !update guess with newton step 
-            solve_JFNK = solve_JFNK + du 
+            solve_JFNK = solve_JFNK + du/norm2(du)
+
+            call correct_guess(N,solve_JFNK)
 
             !solve_JFNK = max(solve_JFNK,0.0d0)
 
