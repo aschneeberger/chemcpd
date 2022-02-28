@@ -522,7 +522,7 @@ module JFNK
             du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-30,max_iter)
 
             !update guess with newton step 
-            solve_JFNK = solve_JFNK + du/norm2(du)
+            solve_JFNK = solve_JFNK + du
 
             call correct_guess(N,solve_JFNK)
 

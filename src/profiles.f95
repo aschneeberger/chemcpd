@@ -850,7 +850,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     ! From equation 4 of anderson et al 2021 
     T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + &
-    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 * 100.0d0
+    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 
     T_s = T_mid / 5.0d0
 
     c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
@@ -959,6 +959,7 @@ subroutine correct_guess(N,x)
 
     z_add = max(c_R_jup,z_add)
 
+    rho_s = max(0.0d0,rho_s)
     rho_add = max(rho_add,rho_s)
     rho_mid = max(rho_mid,rho_add)
 
@@ -1048,14 +1049,14 @@ function Equation_system_ms (N, x, N_args, args)
     
     F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
 
-    res_17 = (T_s - temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet) ) /T_s
+    res_17 = (T_s - temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet) ) 
     if (p_verbose) write(30,*) '[RES] res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
-    res_23 = (rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_mid,omegak)) / rho_add
+    res_23 = (rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_mid,omegak))
     if (p_verbose) write(30,*) '[RES] res_23 complete'
 
-    res_36 = (rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid) ) / rho_add
+    res_36 = (rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid) ) 
     if (p_verbose) write(30,*) '[RES] res_36 complete'
 
     !optical depth computation 
@@ -1065,16 +1066,16 @@ function Equation_system_ms (N, x, N_args, args)
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak)!&
+    res_31 = ((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak))**0.2!&
     !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
     !addiabatique to isotherm transition altitude 
-    res_37 = (z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)) / z_add
+    res_37 = (z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)) 
     if (p_verbose) write(30,*) '[RES] res_37 complete'
 
     !surface density 
-    res_39 = (sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)) / sigma
+    res_39 = (sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)) 
     if (p_verbose) write(30,*) '[RES] res_39 complete'
 
     ! concatenate everyting 

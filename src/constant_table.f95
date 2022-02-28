@@ -94,7 +94,7 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 100 ! number of point in the r grid 
+integer, parameter :: p_Nr = 2000 ! number of point in the r grid 
 
 integer, parameter :: p_gtype = 2 ! grid type, 1:linear , 2: log 
 
@@ -111,6 +111,6 @@ double precision , parameter :: p_M_dot = 4.0d-6 * c_M_earth/c_year   ! Accretio
 double precision , parameter :: p_R_hill = 5.0d0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
 double precision , parameter :: p_R_disk =  p_R_hill / 5.0           ! Disk size [m]
 double precision , parameter :: p_L = 1.0d0 - sqrt(p_R_p/p_R_disk)          ! angular momentum transfert coeficient 
-double precision , parameter :: p_R_grid  = p_R_disk / 5.0d0        ! Size of the model 
+double precision , parameter :: p_R_grid  = p_R_disk / 10.0d0        ! Size of the model 
 
 end module 
