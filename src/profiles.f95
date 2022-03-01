@@ -700,7 +700,7 @@ function surface_density(z_add,rho_add,z_s,rho_s,T_s,omegak)
     b_s = 0.5 * p_mu_gas/c_Rg * (omegak*omegak * z_s*z_s) / (T_s*T_s)
 
     ! do integration 
-    call qag(addiabatique_density,a,b,epsabs,epsrel,key,integration_add,abserr,neval,ier)
+    call qag(addiabatique_density,a,b,epsabs,epsrel,key,integration_add,abserr,neval,ier,b_a)
 
     ! analitical integral results in isotherm
 
@@ -820,7 +820,6 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     !opacity subroutine 
     double precision , dimension(N) :: beta 
-    double precision , dimension(N) :: kappa_0 
     double precision , intent(out) , dimension(N) :: kappa_p
 
     ! From equation 4 of anderson et al 2021 
@@ -842,8 +841,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
     power  = 1.0d0 / (c_gamma -1.0d0)
     rho_add = rho_mid * (T_s/T_mid) ** (power)
 
-    !Approximation de z_s from the gas scale height from heller 2015
-    call opacity_table(T_s, beta, kappa_0, kappa_p) ! use opacity at surface temperature
+
 
     !derfi is erf inverse but from math lib that do not take array in input ...
     ! do i=1,N
