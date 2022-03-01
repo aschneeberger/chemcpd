@@ -124,7 +124,7 @@ Write(30,*) "[MAIN] Guesses Written "
 
 
 !Create the variable to be parsed in the solver subroutine 
-x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
+x = 1000.0d0 ! [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
 
 
 !Create the argument to be parsed in Equation_system_ms
@@ -135,7 +135,7 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
 
-x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,1000)
+x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,3000)
 
 Write(30,*) "[MAIN] End of solving, exit status :" , info
 

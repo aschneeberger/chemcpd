@@ -3,7 +3,7 @@
 DBFLAG = -fbounds-check -fbacktrace -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
 OFLAG =  -O3 -ffast-math -flto -march=native -funroll-loops -fallow-store-data-races #-fopenmp
 
-CFLAG =  $(DBFLAG) 
+CFLAG =  $(DBFLAG) $(OFLAG./)
 DFLAG = -c $(CFLAG)
 
 DIR = ./src

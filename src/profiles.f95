@@ -619,7 +619,7 @@ function addiabatique_height(N,T_mid,T_s,omegak)
 
     constants = sqrt( ( 2.0d0 * c_gamma) / ( c_gamma -1.0d0 ) * c_Rg / p_mu_gas  )
 
-    addiabatique_height = constants * sqrt( T_mid - T_s ) / omegak
+    addiabatique_height = constants * sqrt( max(T_mid - T_s,0.0d0) ) / omegak
 
 end function 
 
@@ -661,7 +661,14 @@ function optical_depth(N,rho_s,kappa_p,z_s,omegak,T_s)
     b_s = 0.5d0 * (p_mu_gas / c_Rg ) * (omegak *omegak * z_s *z_s) / T_s  
     sqrt_b_s = sqrt(b_s)
 
-    optical_depth = kappa_p * rho_s *z_s * exp(b_s)/sqrt_b_s * ( 1 - erf(sqrt_b_s) ) ! equation 24 reduced   
+    ! to avoid overflow if exp will overflow we replace its value by the machine largest number 
+    where (b_s .gt. 300.0d0) 
+        optical_depth = kappa_p * rho_s *z_s * p_machine_largest/sqrt_b_s * ( 1 - erf(sqrt_b_s) )! equation 24 reduced
+
+    elsewhere
+        optical_depth = kappa_p * rho_s *z_s * exp(b_s)/sqrt_b_s * ( 1 - erf(sqrt_b_s) )! equation 24 reduced
+    end where
+
 end function 
 
 function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak) 
@@ -886,6 +893,8 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
 end subroutine 
 
+
+
 end module
 
 !--------------------------------------------------------------------------------------------------------
@@ -1066,7 +1075,8 @@ function Equation_system_ms (N, x, N_args, args)
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = ((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak))**0.2!&
+    res_31 = (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - &
+    &temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak)))**0.2!&
     !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
