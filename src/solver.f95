@@ -7,6 +7,7 @@ module JFNK
     ! at the end of the day. 
     USE MODCTE
     USE ENV 
+    USE RESIDUES
 
     implicit None 
 
@@ -518,12 +519,12 @@ module JFNK
 
         do while (res > tol )
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-30,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-1,max_iter)
 
             !update guess with newton step 
-            solve_JFNK = solve_JFNK + du 
+            solve_JFNK = solve_JFNK + du/norm2(du) * 1000.0d0
 
-            solve_JFNK = max(solve_JFNK,0.0d0)
+            call correct_guess(N,solve_JFNK)
 
             res = norm2(func(N,solve_JFNK,N_args,args))
             
