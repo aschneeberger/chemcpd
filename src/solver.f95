@@ -517,6 +517,8 @@ module JFNK
         solve_JFNK = U0 ! initialize the solution with initial guess
         res = norm2(func(N,U0,N_args,args))
 
+        open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+
         do while (res > tol )
             ! Find the newton step with grmes given 
             du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-1,max_iter)
@@ -527,11 +529,14 @@ module JFNK
             call correct_guess(N,solve_JFNK)
 
             res = norm2(func(N,solve_JFNK,N_args,args))
+
+            write(130,*) res
             
             write(*,*) res
 
         end do 
 
+        close(unit=130)
 
     end function 
 
