@@ -46,7 +46,7 @@ double precision , dimension(5) :: args ! constant arguments in function to opti
 call init_env()
 
 
-i=run_test()
+!i=run_test()
 !!!!!!!!!!!!!
 ! LOGS open !
 !!!!!!!!!!!!!
@@ -127,7 +127,7 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
 
-x = solve_JFNK(8,Equation_system_ms,x,5,args,1.0d-5,3000)
+x = solve_JFNK(8,Equation_system_ms,x,5,args,1.0d-5,300)
 
 
 write(*,*) x
