@@ -904,7 +904,43 @@ function fcn_int(x,param)
 
 end function 
 
+subroutine correct_guess(N,x) 
+    ! Subroutine that correct the guess to give a physicaly correct guess 
+    ! This subroutine is a quick test of the convergence of the algorithm 
+    
+    integer, INTENT(IN) :: N
+    double precision, INTENT(INOUT), dimension(N) :: x 
+    double precision  :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
 
+    sigma = x(1)
+    T_mid = x(2)
+    T_s = x(3)
+    z_s = x(4) 
+    z_add = x(5)
+    rho_mid = x(6)
+    rho_add = x(7)
+    rho_s = x(8)
+
+    T_s = min(T_mid*0.8d0 , T_s)
+
+    T_mid = max(100d0,T_mid)
+    T_s = max(50.0d0,T_s)
+
+    z_s = max(2.0d0*c_R_jup,z_s)
+
+    z_add = min(z_add,z_s*0.8d0)
+
+    z_add = max(c_R_jup,z_add)
+
+    rho_s = max(0.0d0,rho_s)
+    rho_add = max(rho_add,rho_s)
+    rho_mid = max(rho_mid,rho_add)
+
+    sigma = max(0.0d0,sigma)
+
+    x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s] 
+
+end subroutine  
 
 function Equation_system_ms (N, x, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
