@@ -437,7 +437,7 @@ module JFNK
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
         ! write(*,*) k
-        ! write(*,*) 'GMRES res', Hess(k,k)
+        write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
         

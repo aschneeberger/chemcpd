@@ -35,18 +35,8 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(p_Nr*8) :: X ! array containin all variables (8*p_Nr) 
-double precision , dimension(p_Nr*5) :: args ! constant arguments in function to optimize
-
-
-integer :: info !output code of the solver : 
-!    0, improper input parameters.
-!    1, algorithm estimates that the relative error between X and the
-!       solution is at most TOL.
-!    2, number of calls to FCN has reached or exceeded 200*(N+1).
-!    3, TOL is too small.  No further improvement in the approximate
-!       solution X is possible.
-!    4, the iteration is not making good progress.
+DOUBLE PRECISION , DIMENSION(8) :: X ! array containin all variables (8*p_Nr) 
+double precision , dimension(5) :: args ! constant arguments in function to optimize
 
 
 !!!!!!!!!!!!!!!!
@@ -55,7 +45,8 @@ integer :: info !output code of the solver :
 
 call init_env()
 
-!info=run_test()
+
+i=run_test()
 !!!!!!!!!!!!!
 ! LOGS open !
 !!!!!!!!!!!!!
@@ -103,64 +94,65 @@ Write(30,*) "[MAIN] Grid generated "
 
 !Initialize the profiles 
 call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p)
-Write(30,*) "[MAIN] Guesses Initialized "
-if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c_R_jup , 'R_jup'
+! Write(30,*) "[MAIN] Guesses Initialized "
+! if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c_R_jup , 'R_jup'
 
-! Write the initization in a file in table format (for astropy table use)
-open(unit=10, file=Trim(env_datapath)//'/initialisation.dat',status='new')
+! ! Write the initization in a file in table format (for astropy table use)
+! open(unit=10, file=Trim(env_datapath)//'/initialisation.dat',status='new')
 
-write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+! write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
 
-do i = 1,p_Nr 
-    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-    &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-end do 
-close(unit=10) 
-Write(30,*) "[MAIN] Guesses Written "
+! do i = 1,p_Nr 
+!     write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+!     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+! end do 
+! close(unit=10) 
+! Write(30,*) "[MAIN] Guesses Written "
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !      Resolution      !
 !!!!!!!!!!!!!!!!!!!!!!!!
 
+i=1
 
 !Create the variable to be parsed in the solver subroutine 
-x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s]
+x =  [sigma(1),T_mid(1),T_s(1),z_s(1),z_add(1),rho_mid(1),rho_add(1),rho_s(1)]
 
 
 !Create the argument to be parsed in Equation_system_ms
-args = [cap_lambda,omegak,F_vis,F_acc,r]
+args = [cap_lambda(1),omegak(1),F_vis(1),F_acc(1),r(1)]
 
 
 Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver 
 
-x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,1000)
+x = solve_JFNK(8,Equation_system_ms,x,5,args,1.0d-5,3000)
 
-Write(30,*) "[MAIN] End of solving, exit status :" , info
 
+write(*,*) x
 !Parse the solution
-sigma = x(1 : p_Nr)
-T_mid = x(p_Nr+1 : 2*p_Nr)
-T_s = x(2*p_Nr+1 : 3*p_Nr)
-z_s = x(3*p_Nr+1 : 4*p_Nr) 
-z_add = x(4*p_Nr+1 : 5*p_Nr)
-rho_mid = x(5*p_Nr+1 : 6*p_Nr)
-rho_add = x(6*p_Nr+1 : 7*p_Nr)
-rho_s = x(7*p_Nr+1 : 8*p_Nr)
+! sigma = x(1 : p_Nr)
+! T_mid = x(p_Nr+1 : 2*p_Nr)
+! T_s = x(2*p_Nr+1 : 3*p_Nr)
+! z_s = x(3*p_Nr+1 : 4*p_Nr) 
+! z_add = x(4*p_Nr+1 : 5*p_Nr)
+! rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+! rho_add = x(6*p_Nr+1 : 7*p_Nr)
+! rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
 !Write the solution in a file
 
-open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
+! open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
 
-write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+! write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
 
-do i = 1,p_Nr 
-    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-    &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-end do 
-close(unit=10) 
-Write(30,*) "[MAIN] Solution Written "
+! do i = 1,p_Nr 
+!     write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
+!     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
+! end do 
+! close(unit=10) 
+! Write(30,*) "[MAIN] Solution Written "
 
 close(unit=30)
 END PROGRAM
