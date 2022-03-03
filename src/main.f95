@@ -35,7 +35,7 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(4) :: X ! array containin all variables (8*p_Nr) 
+DOUBLE PRECISION , DIMENSION(2) :: X ! array containin all variables (8*p_Nr) 
 double precision , dimension(5) :: args ! constant arguments in function to optimize
 
 
@@ -116,7 +116,7 @@ call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rh
 i=1
 
 !Create the variable to be parsed in the solver subroutine 
-x =  [sigma(1),T_mid(1),T_s(1),z_s(1)]
+x =  [T_mid(1),T_s(1)]
 
 
 !Create the argument to be parsed in Equation_system_ms
@@ -127,7 +127,7 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver
 
-x = solve_JFNK(4,Heller_eq_sys,x,5,args,1.0d-5,300)
+x = solve_JFNK(2,Heller_eq_sys,x,5,args,1.0d-5,1000)
 
 
 write(*,*) x

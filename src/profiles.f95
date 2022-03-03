@@ -851,7 +851,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
     !computation of z_add 
     z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(max(T_mid - T_s,0.0d0))/omegak
 
-    z_s = z_add*2.0d0
+    z_s = h
     !z_add = min(z_add,z_s/1.2d0) ! ensure the physical validity of z_s / z_add guesses, since z_add<z_s
 
     ! computation of rho_s 
@@ -1105,12 +1105,10 @@ function Heller_eq_sys(N, x, N_args, args)
     double precision  :: sigma, T_mid, T_s, z_s
 
     ! Residuals 
-    double precision  :: res_3,res_10,res_13,res_16
+    double precision  :: res_13,res_16
 
-    sigma = x(1) 
-    T_mid = x(2) 
-    T_s = x(3)
-    z_s = x(4)
+    T_mid = x(1) 
+    T_s = x(2)
 
     cap_lambda = args(1)
     omegak = args(2)
@@ -1119,8 +1117,10 @@ function Heller_eq_sys(N, x, N_args, args)
     r = args(5)
 
     ! Corrections
-    T_s = max(T_s, p_T_neb) 
-    Sigma = max(sigma, 1.0d-9) 
+    T_s = abs(T_s)
+    sigma = abs(sigma)
+    T_mid = abs(T_mid)
+    z_s = abs(z_s)
 
     !sound speed 
     c_s = sqrt(c_gamma * c_Rg * T_mid /p_mu_gas  ) 
@@ -1129,28 +1129,33 @@ function Heller_eq_sys(N, x, N_args, args)
     !disk scale height 
     scale_heigh = c_s/omegak
 
-    ! Flux from the planet 
-    F_planet = flux_planet(r,z_s)
-
+    
+    
     ! Opacity table 
     call opacity_table(T_s,beta,kappa_0,kappa_p) 
-
+    
+    !Surface density computation
+    sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
+    
+    ! Surface mass corrdinate 
+    Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma)
+    
+    
+    !Computation of the photosphere height 
+    z_s = DERFI( 1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma * kappa_p) ) * sqrt(2.0d0) * scale_heigh
+    
+    ! Flux from the planet 
+    F_planet = flux_planet(r,z_s)
     !-----------------------Compute the residues-----------------.
 
-    !based on the surface density computation
-    res_3 = sigma - (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
-
-    !Computation of the photosphere height 
-    res_10 =  z_s  - DERFI( 1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma * kappa_p) ) * sqrt(2.0d0) * scale_heigh
-
     !Surface temperature 
-    res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,F_planet)
+    res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,30.0d0)
 
     !Mid plane temperature 
-    res_16 = (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak)) )**0.2
+    res_16 =  (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak)) )**0.2
 
     ! Put back all residues in a form understandable by the solver
-    Heller_eq_sys = [res_3,res_10,res_13,res_16]
+    Heller_eq_sys = [res_13,res_16]
 
 end function 
 

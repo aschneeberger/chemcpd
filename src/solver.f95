@@ -488,12 +488,13 @@ module JFNK
         integer :: max_iter ! maximum number of iteration
         external :: func  ! Function containing the system to solve 
 
-        double precision, dimension(N) :: solve_JFNK ! solution 
+        double precision, dimension(N) :: solve_JFNK, solve_JFNK_test ! solution, and test solution for line search 
 
         ! Internals 
-        double precision :: res ! residual of the  function 
+        double precision :: res, res_test ! residual of the  function, and test residual for line search
         double precision, dimension(N) :: du0 ! initial gmres step guess 
         double precision, dimension(N) :: du ! newton step preformed
+        double precision :: line_coef = 1.0d0 ! coef for line search 
 
         !Interface of the function used in the func minimization
         interface 
@@ -521,16 +522,37 @@ module JFNK
 
         do while (res > tol )
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-1,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-10,max_iter)
 
             !update guess with newton step 
-            solve_JFNK = solve_JFNK + du
+            ! Since the step might overshoot the convergence point 
+            ! a line search of the good mixing ratio is done
 
-            res = norm2(func(N,solve_JFNK,N_args,args))
+            solve_JFNK_test = solve_JFNK + du
+
+            res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+            
+            do while (res_test > res + 0.1d0 *res ) 
+                
+                line_coef = line_coef/2.0
+
+                solve_JFNK_test = solve_JFNK + line_coef * du 
+
+                res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+
+            end do 
+
+            write(*,*) 'line_coef' , line_coef 
+
+            line_coef = 1.0d0
+
+            res = res_test 
+            solve_JFNK = solve_JFNK_test
 
             write(130,*) res
             
-            write(*,*) res
+            write(*,*) 'res', res
+            write(*,*) 'x', solve_JFNK
 
         end do 
 
