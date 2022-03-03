@@ -437,7 +437,7 @@ module JFNK
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
-        ! write(*,*) k
+        write(*,*) k
         write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
@@ -524,9 +524,7 @@ module JFNK
             du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-1,max_iter)
 
             !update guess with newton step 
-            solve_JFNK = solve_JFNK + du/norm2(du) * 1000.0d0
-
-            call correct_guess(N,solve_JFNK)
+            solve_JFNK = solve_JFNK + du
 
             res = norm2(func(N,solve_JFNK,N_args,args))
 

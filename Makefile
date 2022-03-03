@@ -1,5 +1,4 @@
 .PHONY : clean all chemcpd.exe
-#-Ofast -fbounds-check -fbacktrace -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
 DBFLAG = -fbounds-check -fbacktrace -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
 OFLAG =  -O3 -ffast-math -flto -march=native -funroll-loops -fallow-store-data-races -fopenmp
 CFLAG =  $(DBFLAG) 
