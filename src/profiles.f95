@@ -333,7 +333,7 @@ function flux_planet(r,z_s)
     eta = atan(0.5d0) - atan(z_s/r)
 
     !Planet energy flux on disk 
-    flux_planet = p_L_p * sin(eps  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
+    flux_planet = max(p_L_p * sin(eps*r  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s)),0d0)
 
  
 end function

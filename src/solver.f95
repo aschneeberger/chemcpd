@@ -437,8 +437,8 @@ module JFNK
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
-        write(*,*) k
-        write(*,*) 'GMRES res', Hess(k,k)
+        !write(*,*) k
+        !write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
         
@@ -492,6 +492,7 @@ module JFNK
         double precision, dimension(N) :: solve_JFNK, solve_JFNK_test ! solution, and test solution for line search 
 
         ! Internals 
+        integer :: it = 0
         double precision :: res, res_test ! residual of the  function, and test residual for line search
         double precision, dimension(N) :: du0 ! initial gmres step guess 
         double precision, dimension(N) :: du ! newton step preformed
@@ -528,9 +529,9 @@ module JFNK
         solve_JFNK = U0 ! initialize the solution with initial guess
         res = norm2(func(N,U0,N_args,args))
 
-        open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+        !open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
 
-        do while (res > tol )
+        do while (res > tol .and. it < max_iter)
             ! Find the newton step with grmes given 
             du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-20,max_iter)
 
@@ -559,18 +560,19 @@ module JFNK
             end do 
 
             write(*,*) 'line_coef' , line_coef 
+            write(*,*) 'line_coef' , line_coef* du 
 
             line_coef = 1.0d0
 
             res = res_test 
             solve_JFNK = solve_JFNK_test
+            it = it + 1 
 
-            write(130,*) res
             
-            write(*,*) 'res', func(N,solve_JFNK,N_args,args)
+            ! write(*,*) 'res', func(N,solve_JFNK,N_args,args)
             write(*,*) 'res norm', res
             write(*,*) 'x', solve_JFNK
-            write(*,*) '-------------------------------------'
+            ! write(*,*) '-------------------------------------'
 
         end do 
 
