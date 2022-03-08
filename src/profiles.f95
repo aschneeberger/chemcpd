@@ -83,7 +83,7 @@ subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
 
     !Computation of kappa_0 using erf weights to fill discontinuitis
     kappa_01 =   0.5d0 * 1.6d-5 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_02 =  0.25d0 * 1.7d0-2 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_02 =  0.25d0 * 1.7d-2 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
     kappa_03 =  0.25d0 * 1.0d-2 *  (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
     kappa_04 =  0.5d0 * 1.9d-3 *  (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
