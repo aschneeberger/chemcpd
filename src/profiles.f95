@@ -82,7 +82,7 @@ subroutine opacity_table(Temp_in,beta,kappa_0,kappa_p)
 
     !Computation of kappa_0 using erf weights to fill discontinuitis
     kappa_01 =   0.5d0 * 1.6d-5 *(erf((173.0d0-Temp)/sgm) +1.0d0 ) 
-    kappa_02 =  0.25d0 * 1.7d0-2 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
+    kappa_02 =  0.25d0 * 1.7d-2 * (erf((Temp-173.0d0)/sgm) +1.0d0 ) * (erf((425.0d0 - Temp)/sgm) +1.0d0)
     kappa_03 =  0.25d0 * 1.0d-2 *  (erf((Temp-425.0d0)/sgm) +1.0d0 ) * (erf((680.0d0 - Temp)/sgm) +1.0d0)
     kappa_04 =  0.5d0 * 1.9d-3 *  (erf((Temp-680.0d0)/sgm) +1.0d0 )
 
@@ -428,7 +428,7 @@ function temp_surface(kappa_p,sigma,f_vis,f_acc,f_planet)
 
 end function
 
-function temp_mid_equation(beta,kappa_0,cap_lambda,q_s,omegak)
+function temp_mid_equation(T_mid,T_s,beta,kappa_0,cap_lambda,q_s,omegak)
 ! Right hand side of equation 31 (or 32 ), midplane temperature can not be isolated, 
 ! This function is used in the solving subroutine to find the midplane temperature
 ! It is taken from makalkin 2014. It assume that the disk is addiabatique until 
@@ -438,7 +438,8 @@ function temp_mid_equation(beta,kappa_0,cap_lambda,q_s,omegak)
 !Input:
 !------
 !
-! N : integer : size of the grid
+! T_mid :double precision : Midplane temperature from previous iterations
+! T_s :double precision : Surface temperature from previous iterations
 ! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
 ! kappa_0(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the prefactor [m2.Kg-1]
 ! cap_lambda(N) : double precision : Angular mommentum factor Λ 
@@ -449,9 +450,10 @@ function temp_mid_equation(beta,kappa_0,cap_lambda,q_s,omegak)
 !Output:
 !-------
 !
-! temp_mid_equation(N) : double precision : T_m^(5-β) - T_s^(4-β) * T_m value
+! temp_mid_equation(N) : double precision : Midplance temperature
 
     !IN/OUT 
+    double precision  ::  T_mid , T_s ! mean opacity vars 
     double precision  ::  beta , kappa_0 ! mean opacity vars 
     double precision  :: cap_lambda !angular mommentum factor Λ
     double precision  :: q_s ! mass coordinate of photosphere 
@@ -464,8 +466,8 @@ function temp_mid_equation(beta,kappa_0,cap_lambda,q_s,omegak)
     constants = 3.0d0 / (512.0d0 * c_pi*c_pi) * p_mu_gas / (c_sigma_sb * c_Rg * c_gamma)  
 
     !T_m^(5-β) - T_s^(4-β) * T_m
-    temp_mid_equation = constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
-                        & *(cap_lambda/p_L)**2.0d0 * q_s*q_s
+    temp_mid_equation = (constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
+                        & *(cap_lambda/p_L)**2.0d0 * q_s*q_s + T_s**(4d0-beta) * T_mid)**(1d0/(5d0 - beta))
 
 end function 
 
@@ -1044,7 +1046,7 @@ function Makalkin_eq_sys (N, x, N_args, args)
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak)) )**0.2!&
+    res_31 = T_mid - temp_mid_equation(T_mid,T_s,beta,kappa_0,kappa_p,q_s,omegak)
     !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
@@ -1152,8 +1154,7 @@ function Heller_eq_sys(N, x, N_args, args)
     res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,F_planet)
 
     !Mid plane temperature 
-    res_16 =  abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)&
-    & - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak))**(0.2d0) 
+    res_16 =  T_mid - temp_mid_equation(T_mid,T_s,beta,kappa_0,cap_lambda,q_s,omegak)
 
     ! Put back all residues in a form understandable by the solver
     Heller_eq_sys = [res_13,res_16]
@@ -1168,6 +1169,7 @@ function boundary_heller_sys(N,x)
     double precision , dimension(N) :: boundary_heller_sys
     
     boundary_heller_sys = max(100d0,x)
+    boundary_heller_sys = min(1d10, boundary_heller_sys)
     
 end function
 
