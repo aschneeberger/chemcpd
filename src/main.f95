@@ -35,7 +35,7 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(2) :: X ! array containin all variables (8*p_Nr) 
+DOUBLE PRECISION , DIMENSION(2) :: X, sol ! array containin all variables (8*p_Nr) 
 double precision , dimension(5) :: args ! constant arguments in function to optimize
 
 
@@ -126,15 +126,17 @@ Write(30,*) "[MAIN] Begining of solving "
 
 
 open(unit=10,file=trim(env_datapath)//"/sol.dat",status='new')
-write(10,*) 'r T_mid T_s'
-do i=1,p_Nr
-    x =  [500d0,500d0]
+write(10,*) 'r T_mid T_s cap_lambda omegak F_vis F_acc'
+do i=1,10
+    write(30,*) i
+    x =  [T_mid(i),T_s(i)]
     args = [cap_lambda(i),omegak(i),F_vis(i),F_acc(i),r(i)]
-    x = solve_JFNK(2,Heller_eq_sys, boundary_heller_sys,x,5,args,1.0d-5,10000)
-    write(10,*) r(i), x(1),x(2)
+    sol = solve_JFNK(2,Heller_eq_sys, boundary_heller_sys,x,5,args,1.0d-5,500)
+    write(30,*) sol
+    write(10,*) r(i), sol(1),sol(2), cap_lambda(i),omegak(i),F_vis(i),F_acc(i)
 end do 
 
-!close(unit=10)
+close(unit=10)
 
 !Parse the solution
 ! sigma = x(1 : p_Nr)
