@@ -449,7 +449,7 @@ module JFNK
     end function 
 
 
-    function solve_JFNK(N,func,U0,N_args,args,tol,max_iter)
+    function solve_JFNK(N,func,bound_fn,U0,N_args,args,tol,max_iter)
         ! Solve an equation system F(X) = 0 using a Jacobian Free Newton Krylov 
         ! method, as described in Knoll et al 2002. This method is a derivative of a newton 
         ! method ui+1 = ui + J(ui)^(-1) * f(ui). However in our case, we can not compute the Jacobian 
@@ -487,6 +487,7 @@ module JFNK
         double precision :: tol ! Wanted tolerance 
         integer :: max_iter ! maximum number of iteration
         external :: func  ! Function containing the system to solve 
+        external :: bound_fn ! function producing bounds
 
         double precision, dimension(N) :: solve_JFNK, solve_JFNK_test ! solution, and test solution for line search 
 
@@ -512,6 +513,15 @@ module JFNK
                 double precision, dimension(i_N) :: func
 
             end function 
+
+            function bound_fn(i_N,i_u)
+                ! i_N : number of equation
+                ! i_u : Point where the bounds are verified 
+
+                integer :: i_N 
+                double precision , dimension(i_N) :: i_u
+                double precision , dimension(i_N) :: bound_fn
+            end function
         end interface      
 
         du0 = 0.0d0 ! fill du0 with 0s
@@ -522,7 +532,7 @@ module JFNK
 
         do while (res > tol )
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-10,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-20,max_iter)
 
             !update guess with newton step 
             ! Since the step might overshoot the convergence point 
@@ -530,13 +540,19 @@ module JFNK
 
             solve_JFNK_test = solve_JFNK + du
 
+            ! Apply bounds 
+            solve_JFNK_test = bound_fn(N,solve_JFNK_test)
+
+            !compute the residual
             res_test = norm2(func(N,solve_JFNK_test,N_args,args))
             
-            do while (res_test > res + 0.1d0 *res ) 
+            do while (res_test > res ) 
                 
                 line_coef = line_coef/2.0
 
                 solve_JFNK_test = solve_JFNK + line_coef * du 
+
+                solve_JFNK_test = bound_fn(N,solve_JFNK_test)
 
                 res_test = norm2(func(N,solve_JFNK_test,N_args,args))
 
@@ -551,8 +567,10 @@ module JFNK
 
             write(130,*) res
             
-            write(*,*) 'res', res
+            write(*,*) 'res', func(N,solve_JFNK,N_args,args)
+            write(*,*) 'res norm', res
             write(*,*) 'x', solve_JFNK
+            write(*,*) '-------------------------------------'
 
         end do 
 
@@ -578,7 +596,7 @@ module JFNK
     
         guess = 1.0d0
 
-        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,500)
+        X=solve_JFNK(N,Test_heat_eq,boundary_heller_sys,guess,N+1,[dr,r],3.0d-5,500)
 
         open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
         do i=1,N

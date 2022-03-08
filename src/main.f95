@@ -116,18 +116,19 @@ call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rh
 i=1
 
 !Create the variable to be parsed in the solver subroutine 
-x =  [T_mid(1),T_s(1)]
+x =  [T_mid(i),T_s(i)]
 
+write(*,*) x
 
 !Create the argument to be parsed in Equation_system_ms
-args = [cap_lambda(1),omegak(1),F_vis(1),F_acc(1),r(1)]
+args = [cap_lambda(i),omegak(i),F_vis(i),F_acc(i),r(i)]
 
 
 Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver
 
-x = solve_JFNK(2,Heller_eq_sys,x,5,args,1.0d-5,1000)
+x = solve_JFNK(2,Heller_eq_sys, boundary_heller_sys,x,5,args,1.0d-5,10000)
 
 
 write(*,*) x

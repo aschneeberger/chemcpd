@@ -424,7 +424,7 @@ function temp_surface(kappa_p,sigma,f_vis,f_acc,f_planet)
 
     prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
 
-    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* f_planet) + p_T_neb)**(0.25d0)
+    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* f_planet) + p_T_neb**4d0)**(0.25d0)
 
 end function
 
@@ -952,6 +952,8 @@ subroutine correct_guess(N,x)
 
 end subroutine  
 
+ 
+
 function Makalkin_eq_sys (N, x, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
 ! photosurface temperature profile along with surface temperature. 
@@ -1117,10 +1119,8 @@ function Heller_eq_sys(N, x, N_args, args)
     r = args(5)
 
     ! Corrections
-    T_s = abs(T_s)
-    sigma = abs(sigma)
-    T_mid = abs(T_mid)
-    z_s = abs(z_s)
+    T_s = max(T_s,100d0)
+    T_mid = max(T_mid,100d0)
 
     !sound speed 
     c_s = sqrt(c_gamma * c_Rg * T_mid /p_mu_gas  ) 
@@ -1133,7 +1133,7 @@ function Heller_eq_sys(N, x, N_args, args)
     
     ! Opacity table 
     call opacity_table(T_s,beta,kappa_0,kappa_p) 
-    
+
     !Surface density computation
     sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
     
@@ -1142,21 +1142,33 @@ function Heller_eq_sys(N, x, N_args, args)
     
     
     !Computation of the photosphere height 
-    z_s = DERFI( 1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma * kappa_p) ) * sqrt(2.0d0) * scale_heigh
+    z_s = DERFI( min(max(1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma * kappa_p),-0.9999d0),0.9999d0) ) * sqrt(2.0d0) * scale_heigh
     
     ! Flux from the planet 
     F_planet = flux_planet(r,z_s)
     !-----------------------Compute the residues-----------------.
 
     !Surface temperature 
-    res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,30.0d0)
+    res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,F_planet)
 
     !Mid plane temperature 
-    res_16 =  (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak)) )**0.2
+    res_16 =  abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)&
+    & - temp_mid_equation(beta,kappa_0,cap_lambda,Q_s,omegak))**(0.2d0) 
 
     ! Put back all residues in a form understandable by the solver
     Heller_eq_sys = [res_13,res_16]
 
 end function 
+
+
+function boundary_heller_sys(N,x)
+    
+    integer :: N 
+    double precision , dimension(N) :: x 
+    double precision , dimension(N) :: boundary_heller_sys
+    
+    boundary_heller_sys = max(100d0,x)
+    
+end function
 
 end module 
