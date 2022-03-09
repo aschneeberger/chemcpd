@@ -64,6 +64,9 @@ character (len=255), parameter :: p_datadir = "Data"
 
 double precision, parameter :: p_machine_precision = epsilon(1.0d0)
 
+double precision, parameter :: p_machine_largest = huge(1.0d0)/1.0d50
+
+double precision, parameter :: p_ln_machine_largest = log(p_machine_largest)
 
 !---------------------
 ! Physical parameters 
@@ -94,7 +97,7 @@ double precision , parameter :: p_a_p = 5.0 * c_au
 ! Numerical parameters 
 !----------------------
 
-integer, parameter :: p_Nr = 100 ! number of point in the r grid 
+integer, parameter :: p_Nr = 200 ! number of point in the r grid 
 
 integer, parameter :: p_gtype = 2 ! grid type, 1:linear , 2: log 
 
@@ -110,7 +113,7 @@ double precision , parameter :: p_R_p = 1.4 * c_R_jup               ! planet rad
 double precision , parameter :: p_M_dot = 4.0d-6 * c_M_earth/c_year   ! Accretion rate [Kg.s-1] 
 double precision , parameter :: p_R_hill = 5.0d0 * c_au * ( p_M_p / (3.0 * c_M_sun) )**(1.0/3.0)  ! Hill radius [m]
 double precision , parameter :: p_R_disk =  p_R_hill / 5.0           ! Disk size [m]
-double precision , parameter :: p_L = 1.0d0 - sqrt(p_R_p/p_R_disk)   ! angular momentum transfert coeficient 
-double precision , parameter :: p_R_grid  = p_R_disk         ! Size of the model 
+double precision , parameter :: p_L = 1.0d0 - sqrt(p_R_p/p_R_disk)          ! angular momentum transfert coeficient 
+double precision , parameter :: p_R_grid  = p_R_disk ! Size of the model 
 
 end module 

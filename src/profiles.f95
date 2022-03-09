@@ -422,9 +422,9 @@ function temp_surface(kappa_p,sigma,f_vis,f_acc,f_planet)
     double precision  :: prefactor ! prefactor in equation 
 
 
-    prefactor = (1.0d0 + (2.0d0 * kappa_p * sigma)**(-1.0d0) ) / c_sigma_sb 
+    prefactor = (1.0d0 + 1.0d0/(2.0d0 * kappa_p * sigma) ) / c_sigma_sb 
 
-    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* f_planet) + p_T_neb**4d0)**(0.25d0)
+    temp_surface = (prefactor * (f_vis + f_acc + p_Ks* max(f_planet,0.0d0)) + p_T_neb**4.0d0)**(0.25d0)
 
 end function
 
@@ -602,7 +602,7 @@ function addiabatique_height(T_mid,T_s,omegak)
 
     constants = sqrt( ( 2.0d0 * c_gamma) / ( c_gamma -1.0d0 ) * c_Rg / p_mu_gas  )
 
-    addiabatique_height = constants * sqrt( T_mid - T_s ) / omegak
+    addiabatique_height = constants * sqrt( max(T_mid - T_s,0.0d0) ) / omegak
 
 end function 
 
@@ -708,7 +708,7 @@ function surface_density(z_add,rho_add,z_s,rho_s,T_s,omegak)
 
     zeta_a = z_add/z_s 
 
-    integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( 1/sqrt(b_s) ) - erf(zeta_a / sqrt(b_s)) )
+    integration_s = exp(b_s)/sqrt(b_s) * sqrt(c_pi)/2.0d0 * ( erf( sqrt(b_s) ) - erf(zeta_a * sqrt(b_s)) )
 
     ! final surface density 
     surface_density = 2.0d0 * z_add * rho_add * integration_add + 2.0d0 * z_s * rho_s * integration_s
@@ -826,7 +826,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     ! From equation 4 of anderson et al 2021 
     T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + &
-    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25
+    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 
     T_s = T_mid / 5.0d0
 
     c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
@@ -860,6 +860,8 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
     rho_s = rho_add  * exp(-c_gamma/2.0d0 * (z_s*z_s - z_add*z_add)/(h*h))
 
 end subroutine 
+
+
 
 end module
 
@@ -912,30 +914,37 @@ subroutine correct_guess(N,x)
     
     integer, INTENT(IN) :: N
     double precision, INTENT(INOUT), dimension(N) :: x 
-    double precision  :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
+    double precision , DIMENSION(p_Nr) :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
 
-    sigma = x(1)
-    T_mid = x(2)
-    T_s = x(3)
-    z_s = x(4) 
-    z_add = x(5)
-    rho_mid = x(6)
-    rho_add = x(7)
-    rho_s = x(8)
+    sigma = x(1 : p_Nr)
+    T_mid = x(p_Nr+1 : 2*p_Nr)
+    T_s = x(2*p_Nr+1 : 3*p_Nr)
+    z_s = x(3*p_Nr+1 : 4*p_Nr) 
+    z_add = x(4*p_Nr+1 : 5*p_Nr)
+    rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+    rho_add = x(6*p_Nr+1 : 7*p_Nr)
+    rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
     T_s = min(T_mid*0.8d0 , T_s)
 
-    T_s = min(T_s,1.0d5)
-
     T_mid = max(100d0,T_mid)
-    T_mid = min(T_mid,1.0d5)
-
     T_s = max(50.0d0,T_s)
 
     z_s = max(2.0d0*c_R_jup,z_s)
-    z_s = min(2.0d6*c_R_jup,z_s)
 
     z_add = min(z_add,z_s*0.8d0)
+
+    z_add = max(c_R_jup,z_add)
+
+    rho_s = max(0.0d0,rho_s)
+    rho_add = max(rho_add,rho_s)
+    rho_mid = max(rho_mid,rho_add)
+
+    sigma = max(0.0d0,sigma)
+
+    x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s] 
+
+end subroutine  
 
     z_add = max(c_R_jup,z_add)
     z_add = min(1.0d6*c_R_jup,z_add)
@@ -1002,26 +1011,34 @@ function Makalkin_eq_sys (N, x, N_args, args)
     
     if (p_verbose)  write(30,*) "[RES] Entering Residue"
     !Parse all unknown from X vetor given by the resolution subroutine
-    sigma = x(1)
-    T_mid = x(2)
-    T_s = x(3)
-    z_s = x(4) 
-    z_add = x(5)
-    rho_mid = x(6)
-    rho_add = x(7)
-    rho_s = x(8)
+    
+    !$OMP parallel 
+    !$omp workshare 
+
+    sigma = x(1 : p_Nr)
+    T_mid = x(p_Nr+1 : 2*p_Nr)
+    T_s = x(2*p_Nr+1 : 3*p_Nr)
+    z_s = x(3*p_Nr+1 : 4*p_Nr) 
+    z_add = x(4*p_Nr+1 : 5*p_Nr)
+    rho_mid = x(5*p_Nr+1 : 6*p_Nr)
+    rho_add = x(6*p_Nr+1 : 7*p_Nr)
+    rho_s = x(7*p_Nr+1 : 8*p_Nr)
 
     !Parse all constants from args array 
-    cap_lambda = args(1)
-    omegak = args(2)
-    F_vis = args(3)
-    F_acc = args(4)
-    r = args(5)
-   
+    cap_lambda = args(1 : p_Nr)
+    omegak = args(p_Nr+1 : 2*p_Nr)
+    F_vis = args(2*p_Nr +1: 3*p_Nr)
+    F_acc = args(3*p_Nr+1 : 4*p_Nr)
+    r = args(4*p_Nr+1 : 5*p_Nr)
+    
+    !$omp end workshare
+    !$OMP end parallel
+    
     if (p_verbose) write(30,*) '[RES] Parsing complete'
-
+    
     !accretion rate 
-    res_10 = (p_M_dot - accretion_rate(sigma,T_mid,omegak,cap_lambda)) / p_M_dot
+    res_10 = (p_M_dot - accretion_rate(p_Nr, sigma,T_mid,omegak,cap_lambda)) / p_M_dot
+
     if (p_verbose) write(30,*) '[RES] res_10 complete'
 
     !Surface temperature  
@@ -1029,14 +1046,14 @@ function Makalkin_eq_sys (N, x, N_args, args)
     
     F_planet = flux_planet(r,z_s)  !Energy flux from the planet luminosity 
 
-    res_17 = (T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,F_planet) ) /T_s
+    res_17 = (T_s - temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet) ) 
     if (p_verbose) write(30,*) '[RES] res_17 complete'
 
     !Addiabatique to istherm altitue gas density 
-    res_23 = eq_23(rho_s,rho_add,z_s,z_add,T_mid,omegak)
+    res_23 = (rho_add - rho_add_23(p_Nr,rho_s,z_s,z_add,T_mid,omegak))
     if (p_verbose) write(30,*) '[RES] res_23 complete'
 
-    res_36 = (rho_add - rho_add_36( rho_mid, T_s, T_mid) ) / rho_add
+    res_36 = (rho_add - rho_add_36(p_Nr, rho_mid, T_s, T_mid) ) 
     if (p_verbose) write(30,*) '[RES] res_36 complete'
 
     !optical depth computation 

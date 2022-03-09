@@ -586,7 +586,7 @@ module JFNK
         ! Function that test the JFNK solver with a known equation 
         ! system and write the results in datapath
         !
-        integer,PARAMETER :: N=5000 
+        integer,PARAMETER :: N=3000 
         integer :: i
         double precision, dimension(N) :: r
         double precision :: dr 

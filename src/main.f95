@@ -125,16 +125,7 @@ Write(30,*) "[MAIN] Begining of solving "
 !Lauch the solver
 
 
-open(unit=10,file=trim(env_datapath)//"/sol.dat",status='new')
-write(10,*) 'r T_mid T_s cap_lambda omegak F_vis F_acc'
-do i=1,10
-    write(30,*) i
-    x =  [T_mid(i),T_s(i)]
-    args = [cap_lambda(i),omegak(i),F_vis(i),F_acc(i),r(i)]
-    sol = solve_JFNK(2,Heller_eq_sys, boundary_heller_sys,x,5,args,1.0d-5,500)
-    write(30,*) sol
-    write(10,*) r(i), sol(1),sol(2), cap_lambda(i),omegak(i),F_vis(i),F_acc(i)
-end do 
+x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,3000)
 
 close(unit=10)
 
