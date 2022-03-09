@@ -29,7 +29,7 @@ implicit none
 
 
 contains
-subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
+subroutine opacity_table(Temp_in,beta,kappa_0,kappa_p)
 ! Compute the mean planck opacity table as function of the temprature only, 
 ! from makalkin et al 2006 . To avoid brutal disconituity, all parts 
 ! of the opcity table are weighted with error functions, to have transition of p_sgm K,
@@ -52,18 +52,17 @@ subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
 
 
     !IN/OUT
-    integer , intent(in) :: N 
-    double precision , intent(in) , dimension(N) :: Temp_in 
-    double precision , intent(out) , dimension(N) :: beta 
-    double precision , intent(out) , dimension(N) :: kappa_0 
-    double precision , intent(out) , dimension(N) :: kappa_p
+    double precision , intent(in)  :: Temp_in 
+    double precision , intent(out) :: beta 
+    double precision , intent(out) :: kappa_0 
+    double precision , intent(out):: kappa_p
 
     
     ! Intermediary variables 
-    double precision , dimension(N) :: kappa_p1 , kappa_p2, kappa_p3, kappa_p4 ! for erf sum 
-    double precision , dimension(N) :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
-    double precision , dimension(N) :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
-    double precision, dimension(N) :: Temp
+    double precision  :: kappa_p1 , kappa_p2, kappa_p3, kappa_p4 ! for erf sum 
+    double precision  :: beta_1 , beta_2, beta_3, beta_4 ! for erf sum 
+    double precision  :: kappa_01 , kappa_02, kappa_03, kappa_04 ! for erf sum 
+    double precision  :: Temp
     double precision :: sgm = 20.0d0
 
     Temp = max(0.0d0,Temp_in)
@@ -302,7 +301,7 @@ end function
 
 
 
-function flux_planet(N,r,z_s)
+function flux_planet(r,z_s)
 ! Compute the energy from the planet the disk received, NOT THE ONE 
 ! THE DISK ABSORB ! In case of debuging code convergence, pay attention 
 ! to this paramater involving derivative of z_s that depend on T_s
@@ -321,36 +320,26 @@ function flux_planet(N,r,z_s)
 ! flux_planet(N) : double precision : Planet energy flux on the disk. 
 
     !IN/OUT vars 
-    integer :: N
-    double precision , dimension(N) :: r  !radius 
-    double precision , dimension(N) :: z_s  !altidude 
-    double precision , dimension(N) :: flux_planet !flux 
+    double precision :: r  !radius 
+    double precision  :: z_s  !altidude 
+    double precision  :: flux_planet !flux 
 
     !Internal vars 
-    double precision , dimension(N) :: eps , eta    !Disk curvature parameters 
-    double precision , dimension(N) :: dzdr        ! z_s derivative 
+    double precision  :: eps , eta    !Disk curvature parameters 
+   
 
-
-    !Central difference derivative of z_s 
-    dzdr(2:N-1) = (z_s(1:N-2) - z_s(3:N)) / (r(1:N-2) - r(3:N)) 
-    dzdr(1) = dzdr(2)
-    dzdr(N) = dzdr(N-1)
-
-    
-
-    !Disk curvature parameters 
+    !Disk curvature parameters, dz/dr approximated to 1/2
     eps = atan( (4.0d0/(3.0d0*c_pi) * p_R_p) / sqrt( r*r + z_s*z_s ))
-    eta = atan(dzdr) - atan(z_s/r)
+    eta = atan(0.5d0) - atan(z_s/r)
 
     !Planet energy flux on disk 
-    flux_planet = p_L_p * sin(eps  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s))
-    m_ncalls = m_ncalls+1
+    flux_planet = max(p_L_p * sin(eps*r  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s)),0d0)
 
  
 end function
 
 
-function gas_scale_height(N,Temp,omegak)
+function gas_scale_height(Temp,omegak)
 ! Compute the gas scale height above the altitude where the  
 ! The temperature is taken.
 !-------
@@ -367,13 +356,12 @@ function gas_scale_height(N,Temp,omegak)
 !
 ! gas_scale_height(N) : double precision : gas scale height [m] 
 
-    integer :: N 
-    double precision , dimension(N) :: Temp
-    double precision , dimension(N) :: omegak  
-    double precision , dimension(N) :: gas_scale_height
+    double precision  :: Temp
+    double precision  :: omegak  
+    double precision  :: gas_scale_height
 
     !internal vars 
-    double precision , dimension(N) :: c_s ! sound speed 
+    double precision  :: c_s ! sound speed 
 
     c_s = sqrt( Temp * c_gamma * c_Rg / p_mu_gas )
 
@@ -401,7 +389,7 @@ end function
 ! The equations are equation 10,17,23,24,31-32,36,37 and 39 + Κs opacity table
 
 
-function temp_surface(N,kappa_p,sigma,f_vis,f_acc,f_planet)
+function temp_surface(kappa_p,sigma,f_vis,f_acc,f_planet)
 ! Compute the disk temperature at the photosphere altitude, defined to at 
 ! an optical depth τ=2/3. It is assumed that energy flux come from accretion 
 ! heating, viscous heating, planetary luminosity and sourounding PSN temperature. 
@@ -425,14 +413,13 @@ function temp_surface(N,kappa_p,sigma,f_vis,f_acc,f_planet)
 ! temp_surface(N) : double precision : Temperature at photosphere surface [K] 
 
     !IN/OUT
-    integer :: N
-    double precision , dimension(N) :: kappa_p  ! opacity terms 
-    double precision , dimension(N) :: sigma ! surface density 
-    double precision , dimension(N) :: f_vis, f_acc, f_planet ! energy powers 
-    double precision , dimension(N) :: temp_surface  !surface temperature
+    double precision  :: kappa_p  ! opacity terms 
+    double precision  :: sigma ! surface density 
+    double precision  :: f_vis, f_acc, f_planet ! energy powers 
+    double precision  :: temp_surface  !surface temperature
 
     !Internal 
-    double precision , dimension(N) :: prefactor ! prefactor in equation 
+    double precision  :: prefactor ! prefactor in equation 
 
 
     prefactor = (1.0d0 + 1.0d0/(2.0d0 * kappa_p * sigma) ) / c_sigma_sb 
@@ -441,7 +428,7 @@ function temp_surface(N,kappa_p,sigma,f_vis,f_acc,f_planet)
 
 end function
 
-function temp_mid_equation(N,beta,kappa_0,cap_lambda,q_s,omegak)
+function temp_mid_equation(T_mid,T_s,beta,kappa_0,cap_lambda,q_s,omegak)
 ! Right hand side of equation 31 (or 32 ), midplane temperature can not be isolated, 
 ! This function is used in the solving subroutine to find the midplane temperature
 ! It is taken from makalkin 2014. It assume that the disk is addiabatique until 
@@ -451,7 +438,8 @@ function temp_mid_equation(N,beta,kappa_0,cap_lambda,q_s,omegak)
 !Input:
 !------
 !
-! N : integer : size of the grid
+! T_mid :double precision : Midplane temperature from previous iterations
+! T_s :double precision : Surface temperature from previous iterations
 ! beta(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the exponent 
 ! kappa_0(N) : double precision : Mean opacity has a form of κ0 * T^β, it is the prefactor [m2.Kg-1]
 ! cap_lambda(N) : double precision : Angular mommentum factor Λ 
@@ -462,27 +450,28 @@ function temp_mid_equation(N,beta,kappa_0,cap_lambda,q_s,omegak)
 !Output:
 !-------
 !
-! temp_mid_equation(N) : double precision : T_m^(5-β) - T_s^(4-β) * T_m value
+! temp_mid_equation(N) : double precision : Midplance temperature
 
     !IN/OUT 
-    integer :: N
-    double precision , dimension(N) ::  beta , kappa_0 ! mean opacity vars 
-    double precision , dimension(N) :: cap_lambda !angular mommentum factor Λ
-    double precision , dimension(N) :: q_s ! mass coordinate of photosphere 
-    double precision , dimension(N) :: temp_mid_equation  ! midplane temp residual 
-    double precision , dimension(N) :: omegak ! keplerian pulsation
+    double precision  ::  T_mid , T_s ! mean opacity vars 
+    double precision  ::  beta , kappa_0 ! mean opacity vars 
+    double precision  :: cap_lambda !angular mommentum factor Λ
+    double precision  :: q_s ! mass coordinate of photosphere 
+    double precision  :: temp_mid_equation  ! midplane temp residual 
+    double precision  :: omegak ! keplerian pulsation
 
     !Internal vars 
     double precision :: constants ! prefactor composed of all constants 
+    
     constants = 3.0d0 / (512.0d0 * c_pi*c_pi) * p_mu_gas / (c_sigma_sb * c_Rg * c_gamma)  
 
     !T_m^(5-β) - T_s^(4-β) * T_m
-    temp_mid_equation = constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
-                        & *(cap_lambda/p_L)**2.0d0 * q_s*q_s
+    temp_mid_equation = (constants * (4.0d0 - beta) * p_Chi * kappa_0 * (p_M_dot*p_M_dot)/p_alpha * omegak**3.0d0 &
+                        & *(cap_lambda/p_L)**2.0d0 * q_s*q_s + T_s**(4d0-beta) * T_mid)**(1d0/(5d0 - beta))
 
 end function 
 
-function accretion_rate(N,sigma,T_m,omegak,cap_lambda) 
+function accretion_rate(sigma,T_m,omegak,cap_lambda) 
 ! Compute the accretion rate from the temperature, function used in the 
 ! résolution of the equation system, its value must match the parameter p_M_dot
 !------
@@ -502,12 +491,11 @@ function accretion_rate(N,sigma,T_m,omegak,cap_lambda)
 ! accretion_rate(N) : double precision : The accretion rate [Kg.s-1]  
 
     !IN/OUt 
-    integer :: N 
-    double precision , dimension(N) :: sigma
-    double precision , dimension(N) :: T_m
-    double precision , dimension(N) :: omegak 
-    double precision , dimension(N) :: cap_lambda 
-    double precision , dimension(N) :: accretion_rate
+    double precision :: sigma
+    double precision :: T_m
+    double precision :: omegak 
+    double precision :: cap_lambda 
+    double precision :: accretion_rate
 
     !Internal vars 
     double precision :: constants ! prefactor with all constants in it 
@@ -518,16 +506,14 @@ function accretion_rate(N,sigma,T_m,omegak,cap_lambda)
 
 end function
 
-function rho_add_23(N,rho_s,z_s,z_add,T_mid,omegak) 
-! In the equation set there are two independent method to compute the 
-! gas density at the altitude of transition between addiabatique and 
-! isothermal part of the disk. The first is from equation 23 of makalkin 
-! 1995, using the pressure in an isothermal fluid
+function eq_23(rho_s,rho_a,z_s,z_add,T_mid,omegak) 
+! Equation 23 of makalkin 1995 linking the gas density at z_a and z_s, 
+! via the expression of the pressure in the isothermal part of the disk
 !------
 !Input:
 !------
-! N : integer : size of the grid
 ! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
+! rho_s(N) : double precision : Gas density at addiabiatique to isothermal frontier altitude [Kg.m-3] 
 ! z_s(N) : double precision : altitude of the photosphere [m] 
 ! z_add(N) : double precision : altitude of the addiabatique to isothermal transition [m]
 ! T_mid(N) : double precision : Temperature at midplane [K] 
@@ -537,28 +523,27 @@ function rho_add_23(N,rho_s,z_s,z_add,T_mid,omegak)
 !Output:
 !-------
 !
-! rho_add_23(N) : double precision : gas density at addiabatique to isothermal transition
-!                                   from eq 23 
+! res_23(N) : double precision : ln(eq 23) of makalkin  
 
     !IN/OUT
-    integer :: N 
-    double precision , dimension(N) :: rho_s 
-    double precision , dimension(N) :: z_s  
-    double precision , dimension(N) :: z_add  
-    double precision , dimension(N) :: rho_add_23
-    double precision , dimension(N) :: T_mid
-    double precision , dimension(N) :: omegak
+    double precision :: rho_s 
+    double precision :: rho_a 
+    double precision :: z_s  
+    double precision :: z_add  
+    double precision :: eq_23
+    double precision :: T_mid
+    double precision :: omegak
     
     ! Internal vars 
-    double precision , dimension(N) :: h_s 
+    double precision :: h_s 
 
-    h_s = gas_scale_height(N,T_mid,omegak)
+    h_s = gas_scale_height(T_mid,omegak)
 
-    rho_add_23 = rho_s * exp( (c_gamma / 2.0d0) * ( z_s*z_s - z_add*z_add ) / (h_s*h_s) )
+    eq_23 = log(rho_a/rho_s) + c_gamma/2.0d0 * (z_s*z_s - z_add*z_add) / (h_s*h_s)
     
 end function 
 
-function rho_add_36(N,rho_mid,T_s,T_mid) 
+function rho_add_36(rho_mid,T_s,T_mid) 
 ! In the equation set there are two independent method to compute the 
 ! gas density at the altitude of transition between addiabatique and 
 ! isothermal part of the disk. The second is from equation 36 of makalkin 
@@ -579,17 +564,16 @@ function rho_add_36(N,rho_mid,T_s,T_mid)
 !                                    from eq 36
 
     !IN/OUT 
-    integer :: N
-    double precision , dimension(N) :: rho_mid
-    double precision , dimension(N) :: T_s
-    double precision , dimension(N) :: T_mid 
-    double precision , dimension(N) :: rho_add_36 
+    double precision :: rho_mid
+    double precision  :: T_s
+    double precision  :: T_mid 
+    double precision  :: rho_add_36 
 
     rho_add_36 = rho_mid * (T_s / T_mid) ** ( 1.0d0/(c_gamma -1.0d0 ) )
 
 end function 
 
-function addiabatique_height(N,T_mid,T_s,omegak) 
+function addiabatique_height(T_mid,T_s,omegak) 
 !Compute the altitude of the addiabatique to isothermal zone in the 
 ! disk. Taken from eq 37 in makalkin 1995. 
 !------
@@ -608,11 +592,10 @@ function addiabatique_height(N,T_mid,T_s,omegak)
 ! addiabatique_height(N) : double precision :  altitude of the addiabatique to isothermal zone [m]
 
     !IN/OUT
-    integer :: N
-    double precision , dimension(N) :: T_mid  
-    double precision , dimension(N) :: T_s  
-    double precision , dimension(N) :: omegak  
-    double precision , dimension(N) :: addiabatique_height
+    double precision  :: T_mid  
+    double precision  :: T_s  
+    double precision  :: omegak  
+    double precision  :: addiabatique_height
 
     !internal vars
     double precision :: constants !  Prefactor made of all the constants 
@@ -623,15 +606,14 @@ function addiabatique_height(N,T_mid,T_s,omegak)
 
 end function 
 
-function optical_depth(N,rho_s,kappa_p,z_s,omegak,T_s) 
-! Compute the optical depth at the photophere altitude, it must be 
+function eq_24(rho_s,kappa_p,z_s,omegak,T_s) 
+! Equation deduced from the fact that optical depth at the photophere altitude  must be 
 ! equal to 2/3, it is taken from eq 24 from makalkin 1995. It assume
 ! that we are in the isothermal part of the disk
 !------
 !Input:
 !------
 !
-! N : integer : size of the grid
 ! rho_s(N) : double precision : Gas density at photosphere altitude [Kg.m-3] 
 ! kappa_p(N) : double precision : Mean planck opacity [m2.Kg.-1]
 ! z_s(N) : double precision : altitude of the photosphere [m] 
@@ -642,36 +624,31 @@ function optical_depth(N,rho_s,kappa_p,z_s,omegak,T_s)
 !Output:
 !-------
 !
-! optical_depth(N) : double precision : Opticla depth [dimensionless]
-
+! eq_24 : double precision : Opticla depth [dimensionless]
+ 
     !IN/OUT 
-    integer :: N 
-    double precision , dimension(N) :: rho_s 
-    double precision , dimension(N) :: kappa_p 
-    double precision , dimension(N) :: z_s
-    double precision , dimension(N) :: omegak 
-    double precision , dimension(N) :: T_s 
-    double precision , dimension(N) :: optical_depth 
+    double precision  :: rho_s 
+    double precision  :: kappa_p 
+    double precision  :: z_s
+    double precision  :: omegak 
+    double precision  :: T_s 
+    double precision  :: optical_depth 
 
     !INTERNAL VARS 
  
-    double precision , dimension(N) :: b_s ! dimensionless integration factor  
-    double precision , dimension(N) :: sqrt_b_s ! dimensionless integration factor sqrt (to optimize)  
+    double precision  :: b_s ! dimensionless integration factor  
+    double precision  :: sqrt_b_s ! dimensionless integration factor sqrt (to optimize)  
     
+    double precision :: eq_24 ! Equation 24 results from makalkin 1995
+
     b_s = 0.5d0 * (p_mu_gas / c_Rg ) * (omegak *omegak * z_s *z_s) / T_s  
     sqrt_b_s = sqrt(b_s)
 
-    ! to avoid overflow if exp will overflow we replace its value by the machine largest number 
-    where (b_s .gt. 300.0d0) 
-        optical_depth = kappa_p * rho_s *z_s * p_machine_largest/sqrt_b_s * ( 1 - erf(sqrt_b_s) )! equation 24 reduced
-
-    elsewhere
-        optical_depth = kappa_p * rho_s *z_s * exp(b_s)/sqrt_b_s * ( 1 - erf(sqrt_b_s) )! equation 24 reduced
-    end where
-
+    eq_24 = log(kappa_p*rho_s) + 0.5d0*log( (c_Rg * T_s * c_pi)/(2.0d0*omegak*omegak))&
+    & + log( 1.0d0 - erf(sqrt_b_s)) - log(2.0d0/3.0d0) + b_s   ! equation 24 reduced   
 end function 
 
-function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak) 
+function surface_density(z_add,rho_add,z_s,rho_s,T_s,omegak) 
 ! Compute the surface density of gas from density in the addiabatique zone 
 ! and density in isothermal zone. It is taken from equation 39 in makalkin
 ! 1995.
@@ -694,22 +671,21 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
 ! surface_density(N) : double precision : surface density of gas [Kg.m-2]
 
     !IN/OUT 
-    integer :: N
-    double precision , dimension(N) :: z_add 
-    double precision , dimension(N) :: rho_add
-    double precision , dimension(N) :: z_s 
-    double precision , dimension(N) :: rho_s 
-    double precision , dimension(N) :: T_s
-    double precision , dimension(N) :: omegak
-    double precision , dimension(N) :: surface_density
+    double precision  :: z_add 
+    double precision  :: rho_add
+    double precision  :: z_s 
+    double precision  :: rho_s 
+    double precision  :: T_s
+    double precision  :: omegak
+    double precision  :: surface_density
 
     !INTERNAL VARS 
     !Intermediates computations vars 
-    double precision , dimension(N) :: b_a  ! in addiabatique section of integral
-    double precision , dimension(N) :: b_s  ! in isothermal section of integral
-    double precision , dimension(N) :: integration_add ! addiabatique section integral results array 
-    double precision , dimension(N) :: integration_s ! isothermal section integral results array 
-    double precision , dimension(N) :: zeta_a       ! isothermal integral lower bound (z_s/z_add)
+    double precision  :: b_a  ! in addiabatique section of integral
+    double precision  :: b_s  ! in isothermal section of integral
+    double precision  :: integration_add ! addiabatique section integral results array 
+    double precision  :: integration_s ! isothermal section integral results array 
+    double precision  :: zeta_a       ! isothermal integral lower bound (z_s/z_add)
     integer :: i
 
     !integration subroutine 
@@ -718,7 +694,6 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
     double precision :: epsabs=1.0d-3 , epsrel=1.0e-8 ! absolute and relative deisred integration errors 
     integer :: key = 1 ! api communication with qag, 1 is set for 7 gauss points, 15 Gauss-Kronrod points,
     !outputs 
-    double precision :: result ! integration results 
     double precision :: abserr ! integration  absolute error 
     integer :: neval ! number of evaluation of function to integrate 
     integer :: ier ! return code should be 0 for successful integration 
@@ -726,13 +701,8 @@ function surface_density(N,z_add,rho_add,z_s,rho_s,T_s,omegak)
     b_a = 0.5 * p_mu_gas/c_Rg * (omegak*omegak * z_add*z_add) / (T_s*T_s)
     b_s = 0.5 * p_mu_gas/c_Rg * (omegak*omegak * z_s*z_s) / (T_s*T_s)
 
-    ! Loop integrating the function addiabatique_density from 0 to 1 on all grid points 
-    do i=1 , N 
-        ! do integration 
-        call qag(addiabatique_density,a,b,epsabs,epsrel,key,result,abserr,neval,ier,b_a(i))
-        ! store result in array 
-        integration_add(i) = result
-    end do
+    ! do integration 
+    call qag(addiabatique_density,a,b,epsabs,epsrel,key,integration_add,abserr,neval,ier,b_a)
 
     ! analitical integral results in isotherm
 
@@ -852,7 +822,6 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     !opacity subroutine 
     double precision , dimension(N) :: beta 
-    double precision , dimension(N) :: kappa_0 
     double precision , intent(out) , dimension(N) :: kappa_p
 
     ! From equation 4 of anderson et al 2021 
@@ -874,8 +843,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
     power  = 1.0d0 / (c_gamma -1.0d0)
     rho_add = rho_mid * (T_s/T_mid) ** (power)
 
-    !Approximation de z_s from the gas scale height from heller 2015
-    call opacity_table(N, T_s, beta, kappa_0, kappa_p) ! use opacity at surface temperature
+
 
     !derfi is erf inverse but from math lib that do not take array in input ...
     ! do i=1,N
@@ -885,7 +853,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
     !computation of z_add 
     z_add = sqrt( (2.0d0 * c_gamma) / (c_gamma -1.0d0) * c_Rg/p_mu_gas) * sqrt(max(T_mid - T_s,0.0d0))/omegak
 
-    z_s = z_add*2.0d0
+    z_s = h
     !z_add = min(z_add,z_s/1.2d0) ! ensure the physical validity of z_s / z_add guesses, since z_add<z_s
 
     ! computation of rho_s 
@@ -978,7 +946,26 @@ subroutine correct_guess(N,x)
 
 end subroutine  
 
-function Equation_system_ms (N, x, N_args, args)
+    z_add = max(c_R_jup,z_add)
+    z_add = min(1.0d6*c_R_jup,z_add)
+
+    rho_s = max(1.0d-30,rho_s)
+    rho_s = min(1.0d9,rho_s)
+    rho_add = max(rho_add,rho_s)
+    rho_add = min(1.0d9,rho_s)
+    rho_mid = max(rho_mid,rho_add)
+    rho_mid = min(1.0d9,rho_add)
+
+    sigma = max(1.0d-30,sigma)
+    sigma = min(1.0d12,sigma)
+
+    x = [sigma,T_mid,T_s,z_s,z_add,rho_mid,rho_add,rho_s] 
+
+end subroutine  
+
+ 
+
+function Makalkin_eq_sys (N, x, N_args, args)
 ! Equation system based on Makalkin 1995. It aim to solve the midplane and 
 ! photosurface temperature profile along with surface temperature. 
 ! Each residue is named from the original paper equation number, 
@@ -1004,22 +991,23 @@ function Equation_system_ms (N, x, N_args, args)
     !IN/OUT
     integer :: N , i
     integer :: N_args                                 
-    double precision , dimension(N)::  Equation_system_ms , x
+    double precision , dimension(N)::  Makalkin_eq_sys , x
     DOUBLE PRECISION , DIMENSION(N_args):: args 
     CHARACTER (len=255) :: filename
     
     !INTERNALS
-    double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
-    double precision , dimension(P_Nr) :: F_planet ! planetary flux
-    double precision , dimension(P_Nr) :: Q_s ! surface mass coordinate (see makalkin 1994 for precisions)
+    double precision  :: kappa_p, beta, kappa_0 ! mean plack opacity
+    double precision  :: F_planet ! planetary flux
+    double precision  :: Q_s ! surface mass coordinate (see makalkin 1994 for precisions)
     ! Function variables 
-    double precision , DIMENSION(p_Nr) :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
+    double precision  :: sigma, T_mid, T_s, z_s, z_add, rho_mid, rho_add, rho_s
     !Function arguments 
-    double precision , dimension(p_Nr) :: cap_lambda, omegak, F_vis, F_acc, r
+    double precision  :: cap_lambda, omegak, F_vis, F_acc, r
     ! residue
-    double precision , dimension(p_Nr) :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
-    double precision , dimension(p_Nr) :: test_temp_surf
+    double precision  :: res_10, res_17, res_23, res_24, res_31, res_36, res_37, res_39
+    double precision  :: test_temp_surf
     
+    x = max(1.0d-20,x)
     
     if (p_verbose)  write(30,*) "[RES] Entering Residue"
     !Parse all unknown from X vetor given by the resolution subroutine
@@ -1054,9 +1042,9 @@ function Equation_system_ms (N, x, N_args, args)
     if (p_verbose) write(30,*) '[RES] res_10 complete'
 
     !Surface temperature  
-    call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) !compute mean opcity 
+    call opacity_table(T_s,beta,kappa_0,kappa_p) !compute mean opcity 
     
-    F_planet = flux_planet(p_Nr,r,z_s)  !Energy flux from the planet luminosity 
+    F_planet = flux_planet(r,z_s)  !Energy flux from the planet luminosity 
 
     res_17 = (T_s - temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet) ) 
     if (p_verbose) write(30,*) '[RES] res_17 complete'
@@ -1069,73 +1057,137 @@ function Equation_system_ms (N, x, N_args, args)
     if (p_verbose) write(30,*) '[RES] res_36 complete'
 
     !optical depth computation 
-    res_24 = 2.0d0/3.0d0 - optical_depth(p_Nr,rho_s,kappa_p,z_s,omegak,T_s)
+    res_24 = eq_24(rho_s,kappa_p,z_s,omegak,T_s)
     if (p_verbose) write(30,*) '[RES] res_24 complete'
 
     !mid plane computation 
     Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma) !surface mass coordinate
     
-    res_31 = (abs((T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid) - &
-    &temp_mid_equation(p_Nr,beta,kappa_0,cap_lambda,Q_s,omegak)))**0.2!&
+    res_31 = T_mid - temp_mid_equation(T_mid,T_s,beta,kappa_0,kappa_p,q_s,omegak)
     !&/ (T_mid**(5.0d0-beta) - T_s**(4.0d0-beta) * T_mid)
     if (p_verbose) write(30,*) '[RES] res_31 complete'
 
     !addiabatique to isotherm transition altitude 
-    res_37 = (z_add - addiabatique_height(p_nr,T_mid,T_s,omegak)) 
+    res_37 = (z_add - addiabatique_height(T_mid,T_s,omegak)) / z_add
     if (p_verbose) write(30,*) '[RES] res_37 complete'
 
     !surface density 
-    res_39 = (sigma - surface_density(p_Nr,z_add,rho_add,z_s,rho_s,T_s,omegak)) 
+    res_39 = (sigma - surface_density(z_add,rho_add,z_s,rho_s,T_s,omegak)) / sigma
     if (p_verbose) write(30,*) '[RES] res_39 complete'
 
     ! concatenate everyting 
-    Equation_system_ms = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
+    Makalkin_eq_sys = [res_10,res_17,res_23,res_24,res_31,res_36,res_37,res_39]
     if (p_verbose) write(30,*) '[RES] Serelizing complete'
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !Every p_inter_rate calls, write intermediates files for debugging!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
-    if ( modulo(r_ncalls, p_inter_rate) == 0) then 
-        !Write the temporary solution 
-        write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",r_ncalls,'.dat'
-        
-        test_temp_surf = temp_surface(p_Nr,kappa_p,sigma,F_vis,F_acc,F_planet)
-
-        if (p_verbose) write(30,*) '    Writing intermediate sol file'
-        
-        open(unit=20, file=Trim(filename),status='new')
-        !Write header 
-        write(20,*) 'r cap_lambda omegak F_vis F_acc F_planet T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p&
-        & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
-        
-        do i = 1,p_Nr 
-            write(20,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),F_planet(i),T_mid(i),T_s(i) &
-            &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)&
-            &,(T_mid(i)**(5.0d0-beta(i)) - T_s(i)**(4.0d0-beta(i)) * T_mid(i))&
-            &,test_temp_surf(i)
-        end do 
-        close(unit=20) 
-
-        !write the residues values
-        write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/res_int",r_ncalls,'.dat'
-        if (p_verbose) write(30,*) '    Writing intermediate res file'
-        
-        open(unit=20, file=Trim(filename),status='new')
-        
-        write(20,*) 'res_10 res_17 res_23 res_24 res_31 res_36 res_37 res_39&
-        & (T_mid**(5.0d0-beta)-T_s**(4.0d0-beta)*T_mid) temp_surface'
-        
-        do i = 1,p_Nr 
-            write(20,*) res_10(i),res_17(i),res_23(i),res_24(i),res_31(i),res_36(i),res_37(i),res_39(i)&
-            &,(T_mid(i)**(5.0d0-beta(i)) - T_s(i)**(4.0d0-beta(i)) * T_mid(i))&
-            &,test_temp_surf(i)
-        end do 
-        close(unit=20) 
-    end if 
-
-    if (p_verbose) write(30,*) "[RES] Exiting Residue"
-    r_ncalls = r_ncalls+1
+ 
 end function 
+
+
+function Heller_eq_sys(N, x, N_args, args)
+! Equation system based on Heller 2015. It aim to solve the midplane and 
+! photosurface temperature profile along with surface temperature. 
+! Each residue is named from the original paper equation number, 
+! Ex: res_10 : is the residue of equation 10 in Heller 2015.
+! ----------
+! Variables:
+! ----------
+! N : Integer, IN : 
+!     Size of equation system (=4N) 
+!
+! N_args : Integer, IN : 
+!     Size of argument array (=5N)
+!
+! x(N) : double precision, IN/OUT: 
+!  vector of [sigma, T_mid, T_s, z_s]
+!
+! args(N_args) : Integer, IN :
+!    Vector of [cap_lambda,omegak,F_vis,F_acc,r], constant arguments throughout the resolution
+!
+! Heller_eq_sys(N) : double precision, OUT :
+!   vector of equation system residue: [res_3,res_10,res_13,res_16]
+
+    !IN/OUT 
+
+    integer :: N 
+    double precision , dimension(N) :: x 
+    
+    integer :: N_args 
+    double precision  , dimension(N_args) :: args
+
+    DOUBLE PRECISION, dimension(N) :: Heller_eq_sys
+
+    !Internals 
+    double precision  :: kappa_p, beta, kappa_0 ! mean plack opacity
+    double precision  :: F_planet ! planetary flux
+    double precision  :: Q_s ! surface mass coordinate (see Heller 2015for precisions)
+    double precision  :: nu, scale_heigh, c_s 
+
+    ! Named vars 
+    double precision  :: cap_lambda, omegak, F_vis, F_acc, r
+    double precision  :: sigma, T_mid, T_s, z_s
+
+    ! Residuals 
+    double precision  :: res_13,res_16
+
+    T_mid = x(1) 
+    T_s = x(2)
+
+    cap_lambda = args(1)
+    omegak = args(2)
+    F_vis = args(3)
+    F_acc = args(4)
+    r = args(5)
+
+    ! Corrections
+    T_s = max(T_s,100d0)
+    T_mid = max(T_mid,100d0)
+
+    !sound speed 
+    c_s = sqrt(c_gamma * c_Rg * T_mid /p_mu_gas  ) 
+    ! viscosity 
+    nu = (p_alpha *c_s*c_s )/ (omegak )
+    !disk scale height 
+    scale_heigh = c_s/omegak
+
+    
+    
+    ! Opacity table 
+    call opacity_table(T_s,beta,kappa_0,kappa_p) 
+
+    !Surface density computation
+    sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
+    
+    ! Surface mass corrdinate 
+    Q_s = 1.0d0 - 4.0d0 /(3.0d0 * kappa_p*sigma)
+    
+    
+    !Computation of the photosphere height 
+    z_s = DERFI( min(max(1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma * kappa_p),-0.9999d0),0.9999d0) ) * sqrt(2.0d0) * scale_heigh
+    
+    ! Flux from the planet 
+    F_planet = flux_planet(r,z_s)
+    !-----------------------Compute the residues-----------------.
+
+    !Surface temperature 
+    res_13 = T_s - temp_surface(kappa_p,sigma,F_vis,F_acc,F_planet)
+
+    !Mid plane temperature 
+    res_16 =  T_mid - temp_mid_equation(T_mid,T_s,beta,kappa_0,cap_lambda,q_s,omegak)
+
+    ! Put back all residues in a form understandable by the solver
+    Heller_eq_sys = [res_13,res_16]
+
+end function 
+
+
+function boundary_heller_sys(N,x)
+    
+    integer :: N 
+    double precision , dimension(N) :: x 
+    double precision , dimension(N) :: boundary_heller_sys
+    
+    boundary_heller_sys = max(100d0,x)
+    boundary_heller_sys = min(1d10, boundary_heller_sys)
+    
+end function
 
 end module 
