@@ -531,9 +531,9 @@ module JFNK
         it = 0
         !open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
 
-        do while (res > tol .and. it < max_iter)
+        do while (res > tol .and. it < max_iter*10)
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-20,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-10,max_iter)
 
             !update guess with newton step 
             ! Since the step might overshoot the convergence point 
@@ -547,7 +547,7 @@ module JFNK
             !compute the residual
             res_test = norm2(func(N,solve_JFNK_test,N_args,args))
             
-            do while (res_test > res*1.01d0 ) 
+            do while (res_test > res + res*1d-4 ) 
                 
                 line_coef = line_coef/2.0
 

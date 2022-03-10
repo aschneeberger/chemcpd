@@ -74,9 +74,9 @@ if __name__ == '__main__':
     #If there is r in the colnames of the file, use its radius 
     if 'r' in table.colnames :
         for key in table.colnames :
-            control_plot(table,key,xlog=True)
+            control_plot(table,key,xlog=True,ylog=False)
     #For other files such as debbug files or res files, use the radius from initialisation
     else :
         r_init = Parse(DIRECTORY,'initialisation.dat')['r']
         for key in table.colnames :
-            control_plot(table,key,xlog=True,r=r_init)
+            control_plot(table,key,xlog=True,ylog=False,r=r_init)

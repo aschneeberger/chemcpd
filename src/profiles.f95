@@ -328,11 +328,17 @@ function flux_planet(N,r,z_s)
 
     !Internal vars 
     double precision , dimension(N) :: eps , eta    !Disk curvature parameters 
-   
+    double precision , dimension(N) :: dzdr        ! z_s derivative 
+
+
+    !Central difference derivative of z_s 
+    dzdr(2:N-1) = (z_s(1:N-2) - z_s(3:N)) / (r(1:N-2) - r(3:N)) 
+    dzdr(1) = dzdr(2)
+    dzdr(N) = dzdr(N-1)
 
     !Disk curvature parameters, dz/dr approximated to 1/2
     eps = atan( (4.0d0/(3.0d0*c_pi) * p_R_p) / sqrt( r*r + z_s*z_s ))
-    eta = atan(0.5d0) - atan(z_s/r)
+    eta = atan(dzdr) - atan(z_s/r)
 
     !Planet energy flux on disk 
     flux_planet = max(p_L_p * sin(eps*r  + eta) / (8.0d0*c_pi*(r*r + z_s*z_s)),0d0)
@@ -1152,7 +1158,11 @@ function Heller_eq_sys(N, x, N_args, args)
     
     
     ! Opacity table 
-    call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) 
+    !call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) 
+
+    beta = 2.1d0
+    kappa_0 = 1.6d-5
+    kappa_p = p_Chi *  0.5d0 * 1.6d-5 * T_s**2.1d0
 
     !Surface density computation
     sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
@@ -1189,7 +1199,7 @@ function boundary_heller_sys(N,x)
     double precision , dimension(N) :: x 
     double precision , dimension(N) :: boundary_heller_sys
     
-    boundary_heller_sys = max(100d0,x)
+    boundary_heller_sys = max(1d2,x)
     boundary_heller_sys = min(1d10, boundary_heller_sys)
     
 end function
