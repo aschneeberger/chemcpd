@@ -35,8 +35,8 @@ double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
 
 !Hybr1 subroutine parameters: 
-DOUBLE PRECISION , DIMENSION(2) :: X, sol ! array containin all variables (8*p_Nr) 
-double precision , dimension(5) :: args ! constant arguments in function to optimize
+DOUBLE PRECISION , DIMENSION(2*p_Nr) :: X, sol ! array containin all variables (8*p_Nr) 
+double precision , dimension(5*p_Nr) :: args ! constant arguments in function to optimize
 
 
 !!!!!!!!!!!!!!!!
@@ -124,33 +124,28 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver
 
+x = 1000d0
+args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-x = solve_JFNK(p_Nr*8,Equation_system_ms,x,5*p_Nr,args,1.0d-5,3000)
+sol = solve_JFNK(p_Nr*2,Heller_eq_sys,boundary_heller_sys,x,5*p_Nr,args,1.0d-5,300)
 
 close(unit=10)
 
 !Parse the solution
-! sigma = x(1 : p_Nr)
-! T_mid = x(p_Nr+1 : 2*p_Nr)
-! T_s = x(2*p_Nr+1 : 3*p_Nr)
-! z_s = x(3*p_Nr+1 : 4*p_Nr) 
-! z_add = x(4*p_Nr+1 : 5*p_Nr)
-! rho_mid = x(5*p_Nr+1 : 6*p_Nr)
-! rho_add = x(6*p_Nr+1 : 7*p_Nr)
-! rho_s = x(7*p_Nr+1 : 8*p_Nr)
+T_mid = sol(1 : p_Nr)
+T_s = sol(p_Nr+1 : 2*p_Nr)
 
 !Write the solution in a file
 
-! open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
+open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
 
-! write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s'
 
-! do i = 1,p_Nr 
-!     write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-!     &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-! end do 
-! close(unit=10) 
-! Write(30,*) "[MAIN] Solution Written "
+do i = 1,p_Nr 
+    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i)
+end do 
+close(unit=10) 
+Write(30,*) "[MAIN] Solution Written "
 
 close(unit=30)
 END PROGRAM

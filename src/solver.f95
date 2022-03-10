@@ -560,7 +560,7 @@ module JFNK
             end do 
 
             write(*,*) 'line_coef' , line_coef 
-            write(*,*) 'line_coef' , line_coef* du 
+
 
             line_coef = 1.0d0
 
@@ -571,7 +571,6 @@ module JFNK
             
             ! write(*,*) 'res', func(N,solve_JFNK,N_args,args)
             write(*,*) 'res norm', res
-            write(*,*) 'x', solve_JFNK
             write(*,*) '-------------------------------------'
 
         end do 
