@@ -395,9 +395,8 @@ module JFNK
             ! the maximum iteration number
             if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) ) then 
                 ! Add the basis vector k+1
-                !$OMP Parallel workshare 
+                
                 Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
-                !$OMP end parallel workshare 
             else 
                 k = k-1
                 exit 
@@ -482,7 +481,7 @@ module JFNK
         !IN/OUT
         integer :: N ! number of equations 
         integer :: N_args ! number of arguments 
-        double precision, dimension(N) :: U0 ! Solution guesses 
+        double precision, dimension(N) :: U0  ! Solution guesses 
         double precision, dimension(N_args) :: args !arguments to be passed to the function 
         double precision :: tol ! Wanted tolerance 
         integer :: max_iter ! maximum number of iteration
@@ -529,11 +528,17 @@ module JFNK
         solve_JFNK = U0 ! initialize the solution with initial guess
         res = norm2(func(N,U0,N_args,args))
         it = 0
-        !open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+        open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+        
+        write(*,*) "init res" , res 
+        write(*,*) "-------------------"
 
-        do while (res > tol .and. it < max_iter*10)
+        write(130,*) 'res'
+        write(130,*) res
+
+        do while (res > tol .and. it < 100)
             ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-10,max_iter)
+            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-5,max_iter)
 
             !update guess with newton step 
             ! Since the step might overshoot the convergence point 
@@ -568,8 +573,8 @@ module JFNK
             solve_JFNK = solve_JFNK_test
             it = it + 1 
 
-            
-            ! write(*,*) 'res', func(N,solve_JFNK,N_args,args)
+            write(130,*) res
+            !write(*,*) 'res', func(N,solve_JFNK,N_args,args)
             write(*,*) 'res norm', res
             write(*,*) '-------------------------------------'
 

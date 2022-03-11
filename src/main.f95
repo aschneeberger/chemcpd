@@ -124,10 +124,10 @@ Write(30,*) "[MAIN] Begining of solving "
 
 !Lauch the solver
 
-x = 1d4
+x = [T_mid,T_s]
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-sol = solve_JFNK(p_Nr*2,Heller_eq_sys,boundary_heller_sys,x,5*p_Nr,args,1.0d-5,1000)
+sol = solve_JFNK(p_Nr*2,Heller_eq_sys,boundary_heller_sys,x,5*p_Nr,args,1.0d-5,3000)
 
 close(unit=10)
 

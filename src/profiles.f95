@@ -1161,8 +1161,8 @@ function Heller_eq_sys(N, x, N_args, args)
     !call opacity_table(p_Nr,T_s,beta,kappa_0,kappa_p) 
 
     beta = 2.1d0
-    kappa_0 = 1.6d-5
-    kappa_p = p_Chi *  0.5d0 * 1.6d-5 * T_s**2.1d0
+    kappa_p = p_Chi *   1.6d-5 * T_s**2.1d0
+    kappa_0 = p_Chi *   1.6d-5
 
     !Surface density computation
     sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
