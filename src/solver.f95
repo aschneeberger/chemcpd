@@ -7,6 +7,7 @@ module JFNK
     ! at the end of the day. 
     USE MODCTE
     USE ENV 
+    USE RESIDUES
 
     implicit None 
 
@@ -394,9 +395,8 @@ module JFNK
             ! the maximum iteration number
             if ((Hess(k+1,k) .ne. 0.0d0) .and. (k .ne. max_iter-1) ) then 
                 ! Add the basis vector k+1
-                !$OMP Parallel workshare 
+                
                 Vk(k+1,:) = Vk_estimate/Hess(k+1,k)
-                !$OMP end parallel workshare 
             else 
                 k = k-1
                 exit 
@@ -436,8 +436,8 @@ module JFNK
 
         ! Allocate the space for lmbd, now that we know the its size 
         ALLOCATE(lmbd(k)) 
-        ! write(*,*) k
-        ! write(*,*) 'GMRES res', Hess(k,k)
+        write(*,*) "GMRES iterations", k
+        write(*,*) 'GMRES res', Hess(k,k)
         !Value du in the krylov space 
         lmbd = back_substitution(k,Hess(:k,:k),fu(:k))
         
@@ -448,7 +448,7 @@ module JFNK
     end function 
 
 
-    function solve_JFNK(N,func,U0,N_args,args,tol,max_iter)
+    function solve_JFNK(N,func,bound_fn,U0,N_args,args,tol,max_iter)
         ! Solve an equation system F(X) = 0 using a Jacobian Free Newton Krylov 
         ! method, as described in Knoll et al 2002. This method is a derivative of a newton 
         ! method ui+1 = ui + J(ui)^(-1) * f(ui). However in our case, we can not compute the Jacobian 
@@ -481,18 +481,23 @@ module JFNK
         !IN/OUT
         integer :: N ! number of equations 
         integer :: N_args ! number of arguments 
-        double precision, dimension(N) :: U0 ! Solution guesses 
+        double precision, dimension(N) :: U0  ! Solution guesses 
         double precision, dimension(N_args) :: args !arguments to be passed to the function 
         double precision :: tol ! Wanted tolerance 
         integer :: max_iter ! maximum number of iteration
         external :: func  ! Function containing the system to solve 
+        external :: bound_fn ! function producing bounds
 
-        double precision, dimension(N) :: solve_JFNK ! solution 
+        double precision, dimension(N) :: solve_JFNK, solve_JFNK_test ! solution, and test solution for line search 
 
         ! Internals 
-        double precision :: res ! residual of the  function 
+        integer :: it,it_file,i
+        double precision :: res, res_test ! residual of the  function, and test residual for line search
         double precision, dimension(N) :: du0 ! initial gmres step guess 
-        double precision, dimension(N) :: du ! newton step preformed
+        double precision, dimension(N) :: du , res_vec! newton step preformed
+        double precision :: line_coef = 1.0d0 ! coef for line search 
+
+        character(len = 155) :: filename
 
         !Interface of the function used in the func minimization
         interface 
@@ -510,27 +515,111 @@ module JFNK
                 double precision, dimension(i_N) :: func
 
             end function 
+
+            function bound_fn(i_N,i_u)
+                ! i_N : number of equation
+                ! i_u : Point where the bounds are verified 
+
+                integer :: i_N 
+                double precision , dimension(i_N) :: i_u
+                double precision , dimension(i_N) :: bound_fn
+            end function
         end interface      
 
         du0 = 0.0d0 ! fill du0 with 0s
         solve_JFNK = U0 ! initialize the solution with initial guess
         res = norm2(func(N,U0,N_args,args))
+        it = 0
+        open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+        
+        write(*,*) "init res" , res 
+        write(*,*) "-------------------"
 
-        do while (res > tol )
-            ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-30,max_iter)
+        write(130,*) 'res'
+        write(130,*) res
 
-            !update guess with newton step 
-            solve_JFNK = solve_JFNK + du 
 
-            solve_JFNK = max(solve_JFNK,0.0d0)
+        ! while the convergence criterion is not met 
+        it_file = 0
+        do while (res > tol)
+            
+            ! Every 20 iteration, the solver is reset and stagning points are resets
+            do while (it < 100)
+                ! Find the newton step with grmes given 
+                du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-5,max_iter)
+
+                !update guess with newton step 
+                ! Since the step might overshoot the convergence point 
+                ! a line search of the good mixing ratio is done
+
+                solve_JFNK_test = solve_JFNK + du
+
+                ! Apply bounds 
+                solve_JFNK_test = bound_fn(N,solve_JFNK_test)
+
+                !compute the residual
+                res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+                
+                ! perform a line search of the better mixing coefficient 
+                do while (res_test > res + res*1d-4 ) 
+                    
+                    line_coef = line_coef/2.0
+
+                    solve_JFNK_test = solve_JFNK + line_coef * du 
+
+                    solve_JFNK_test = bound_fn(N,solve_JFNK_test)
+
+                    res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+
+
+                end do 
+
+                write(*,*) 'iteration' , it
+                write(*,*) 'line_coef' , line_coef 
+
+
+                line_coef = 1.0d0
+
+                res = res_test 
+                solve_JFNK = solve_JFNK_test
+                it = it + 1 
+
+                write(130,*) res
+                !write(*,*) 'res', func(N,solve_JFNK,N_args,args)
+                write(*,*) 'res norm', res
+                write(*,*) '-------------------------------------'
+
+            end do 
+            ! write intermediate solution file 
+            it_file = it_file + 1 
+            write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",it_file,'.dat'
+
+
+            ! prevent stagnation of the solver by interpoling points
+            write(*,*) 'Interpolating stagning points' 
+            res_vec = func(N,solve_JFNK,N_args,args)
+            
+            do i=1 , N 
+                if(res_vec(i) .gt. 1d-1) then 
+                    solve_JFNK(i) = (solve_JFNK(i-1) + solve_JFNK(i+1))/2d0
+                end if 
+            end do 
 
             res = norm2(func(N,solve_JFNK,N_args,args))
+
+            it = 0
             
-            write(*,*) res
+            open(unit=140, file=filename, status='new')
+            write(140,*) 'x' 
+            do i=1,N/2
+                write(140,*) solve_JFNK(i)
+            end do  
+            close(unit=140)
 
         end do 
+        write(30,*) " In solver"
 
+        close(unit=130)
 
     end function 
 
@@ -538,7 +627,7 @@ module JFNK
         ! Function that test the JFNK solver with a known equation 
         ! system and write the results in datapath
         !
-        integer,PARAMETER :: N=5000 
+        integer,PARAMETER :: N=3000 
         integer :: i
         double precision, dimension(N) :: r
         double precision :: dr 
@@ -552,10 +641,10 @@ module JFNK
     
         guess = 1.0d0
 
-        X=solve_JFNK(N,Test_heat_eq,guess,N+1,[dr,r],3.0d-5,500)
+        X=solve_JFNK(N,Test_heat_eq,boundary_heller_sys,guess,N+1,[dr,r],3.0d-5,500)
 
         open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
-        do i=1,N
+        do i=1 , N
             write(20,*) r(i), X(i)
         end do 
         close(unit=20)

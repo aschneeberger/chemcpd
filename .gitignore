@@ -1,4 +1,5 @@
 /Graphs
+*/__pycache__
 /__pycache__
 /Archives 
 /.vscode
@@ -12,3 +13,4 @@
 *.dat
 *.log
 /Data
+*.dSyM
