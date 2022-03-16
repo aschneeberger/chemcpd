@@ -13,3 +13,4 @@
 *.dat
 *.log
 /Data
+*.dSyM

@@ -491,11 +491,13 @@ module JFNK
         double precision, dimension(N) :: solve_JFNK, solve_JFNK_test ! solution, and test solution for line search 
 
         ! Internals 
-        integer :: it
+        integer :: it,it_file,i
         double precision :: res, res_test ! residual of the  function, and test residual for line search
         double precision, dimension(N) :: du0 ! initial gmres step guess 
-        double precision, dimension(N) :: du ! newton step preformed
+        double precision, dimension(N) :: du , res_vec! newton step preformed
         double precision :: line_coef = 1.0d0 ! coef for line search 
+
+        character(len = 155) :: filename
 
         !Interface of the function used in the func minimization
         interface 
@@ -536,50 +538,85 @@ module JFNK
         write(130,*) 'res'
         write(130,*) res
 
-        do while (res > tol .and. it < 100)
-            ! Find the newton step with grmes given 
-            du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-5,max_iter)
 
-            !update guess with newton step 
-            ! Since the step might overshoot the convergence point 
-            ! a line search of the good mixing ratio is done
-
-            solve_JFNK_test = solve_JFNK + du
-
-            ! Apply bounds 
-            solve_JFNK_test = bound_fn(N,solve_JFNK_test)
-
-            !compute the residual
-            res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+        ! while the convergence criterion is not met 
+        it_file = 0
+        do while (res > tol)
             
-            do while (res_test > res + res*1d-4 ) 
-                
-                line_coef = line_coef/2.0
+            ! Every 20 iteration, the solver is reset and stagning points are resets
+            do while (it < 100)
+                ! Find the newton step with grmes given 
+                du = GMRES_given(N,func,solve_JFNK,du0,N_args,args,1.0d-5,max_iter)
 
-                solve_JFNK_test = solve_JFNK + line_coef * du 
+                !update guess with newton step 
+                ! Since the step might overshoot the convergence point 
+                ! a line search of the good mixing ratio is done
 
+                solve_JFNK_test = solve_JFNK + du
+
+                ! Apply bounds 
                 solve_JFNK_test = bound_fn(N,solve_JFNK_test)
 
+                !compute the residual
                 res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+                
+                ! perform a line search of the better mixing coefficient 
+                do while (res_test > res + res*1d-4 ) 
+                    
+                    line_coef = line_coef/2.0
+
+                    solve_JFNK_test = solve_JFNK + line_coef * du 
+
+                    solve_JFNK_test = bound_fn(N,solve_JFNK_test)
+
+                    res_test = norm2(func(N,solve_JFNK_test,N_args,args))
+
+
+                end do 
+
+                write(*,*) 'iteration' , it
+                write(*,*) 'line_coef' , line_coef 
+
+
+                line_coef = 1.0d0
+
+                res = res_test 
+                solve_JFNK = solve_JFNK_test
+                it = it + 1 
+
+                write(130,*) res
+                !write(*,*) 'res', func(N,solve_JFNK,N_args,args)
+                write(*,*) 'res norm', res
+                write(*,*) '-------------------------------------'
 
             end do 
+            ! write intermediate solution file 
+            it_file = it_file + 1 
+            write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",it_file,'.dat'
 
-            write(*,*) 'line_coef' , line_coef 
 
+            ! prevent stagnation of the solver by interpoling points
+            write(*,*) 'Interpolating stagning points' 
+            res_vec = func(N,solve_JFNK,N_args,args)
+            
+            do i=1 , N 
+                if(res_vec(i) .gt. 1d-1) then 
+                    solve_JFNK(i) = (solve_JFNK(i-1) + solve_JFNK(i+1))/2d0
+                end if 
+            end do 
 
-            line_coef = 1.0d0
+            res = norm2(func(N,solve_JFNK,N_args,args))
 
-            res = res_test 
-            solve_JFNK = solve_JFNK_test
-            it = it + 1 
-
-            write(130,*) res
-            !write(*,*) 'res', func(N,solve_JFNK,N_args,args)
-            write(*,*) 'res norm', res
-            write(*,*) '-------------------------------------'
+            it = 0
+            
+            open(unit=140, file=filename, status='new')
+            write(140,*) 'x' 
+            do i=1,N/2
+                write(140,*) solve_JFNK(i)
+            end do  
+            close(unit=140)
 
         end do 
-
         write(30,*) " In solver"
 
         close(unit=130)
@@ -607,7 +644,7 @@ module JFNK
         X=solve_JFNK(N,Test_heat_eq,boundary_heller_sys,guess,N+1,[dr,r],3.0d-5,500)
 
         open(unit=20,file=trim(env_datapath)//'/heat.dat', status='new')
-        do i=1,N
+        do i=1 , N
             write(20,*) r(i), X(i)
         end do 
         close(unit=20)
