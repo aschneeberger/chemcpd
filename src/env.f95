@@ -106,4 +106,54 @@ Module ENV
         
     end function 
 
+    subroutine write_file(fname, values, N_rows, N_cols, colnames)
+        ! Subroutine parsing, formating and writing datas in a file
+        !-----
+        !INPUT
+        !-----
+        !
+        ! fname : character : name of the  file 
+        ! values  : double precision : data to write 
+        ! N_rows : integer : number of rows  
+        ! N_cols : integer : number of columns
+        ! colnames : character : names of the columns formatted as "col1 col2 col3" 
+
+        !IN/OUT
+        character(len=*),intent(in) :: fname ! file name 
+        character(len=*),intent(in) :: colnames ! columns names 
+
+        integer,intent(in) :: N_rows, N_cols 
+        double precision, dimension(:),intent(in) :: values
+
+        !Internals
+        integer :: i,j ! iterators 
+
+        ! Check if Number of values is coherent with the asked numbers of rows and cols 
+        if (N_rows * N_cols .ne. size(values)) then 
+
+            WRITE(*,*) "[ENV] ERROR In write_file subroutine, values array size not equal to N_rows * N_cols"
+            stop
+            
+        end if 
+
+        ! Create the file 
+        open(unit=300,file=Trim(env_datapath)//'/'//Trim(fname),status='new')
+
+        ! Write the columns names 
+        write(300,*) colnames
+
+        ! Format and write values 
+        do i=1,N_rows
+
+            ! write each line of the file 
+            do j=1,N_cols
+                write(300,'(ES30.15E3)', advance='no') values(i+(j-1)*N_rows)
+                
+            end do 
+            write(300,*)
+
+        end do 
+        
+    end subroutine 
+
 end module

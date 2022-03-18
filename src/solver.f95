@@ -612,15 +612,8 @@ module JFNK
                 write(*,*) '-------------------------------------'
                 
                 !write intermediate file 
-                write(filename,'(a,I5.5,a)') Trim(env_datapath)//"/sol_int",it_file,'.dat'
-                open(unit=140, file=filename, status='new')
-                write(140,*) 'x res' 
-                
-                ! only write T_m (for debbuging purpose )
-                do i=1,N/2
-                    write(140,*) solve_JFNK(i) , res_vec(i)
-                end do  
-                close(unit=140)
+                write(filename,'(a,I5.5,a)') "/sol_int",it_file,'.dat'                
+                call write_file( filename, [solve_JFNK,res_vec], p_Nr, 4, 'Tm Ts res_Tm res_Ts' )
             end do 
             
 
