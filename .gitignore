@@ -14,3 +14,4 @@
 *.log
 /Data
 *.dSyM
+*.DS_Store
