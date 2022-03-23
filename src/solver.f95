@@ -612,8 +612,8 @@ module JFNK
                 write(*,*) '-------------------------------------'
                 
                 !write intermediate file 
-                write(filename,'(a,I5.5,a)') "/sol_int",it_file,'.dat'                
-                call write_file( filename, [solve_JFNK,res_vec], p_Nr, 4, 'Tm Ts res_Tm res_Ts' )
+                write(filename,'(a,I5.5,a)') "/sol_int",it_file,'.csv'                
+                call write_file( filename, [solve_JFNK,res_vec], p_Nr, 4, 'Tm,Ts,res_Tm,res_Ts,' )
             end do 
             
 

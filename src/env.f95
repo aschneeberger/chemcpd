@@ -127,6 +127,7 @@ Module ENV
 
         !Internals
         integer :: i,j ! iterators 
+        character(len=255) :: out_format 
 
         ! Check if Number of values is coherent with the asked numbers of rows and cols 
         if (N_rows * N_cols .ne. size(values)) then 
@@ -140,16 +141,16 @@ Module ENV
         open(unit=300,file=Trim(env_datapath)//'/'//Trim(fname),status='new')
 
         ! Write the columns names 
-        write(300,*) colnames
+        write(300,'(A)') colnames
+        ! Format and write values
 
-        ! Format and write values 
+        101 format(*(g0, ", "))
         do i=1,N_rows
 
             ! write each line of the file 
-            do j=1,N_cols
-                write(300,'(ES30.15E3)', advance='no') values(i+(j-1)*N_rows)
+
+                write(300,101) (values(i+(j-1)*N_rows) , j=1,N_cols)
                 
-            end do 
             write(300,*)
 
         end do 
