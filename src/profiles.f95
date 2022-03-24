@@ -1154,7 +1154,6 @@ function Heller_eq_sys(N, x, N_args, args)
     nu = (p_alpha *c_s*c_s )/ (omegak )
     !disk scale height 
     scale_heigh = c_s/omegak
-
     
     
     ! Opacity table 
@@ -1203,5 +1202,59 @@ function boundary_heller_sys(N,x)
     boundary_heller_sys = min(1d10, boundary_heller_sys)
     
 end function
+
+subroutine write_heller(fname, N, x, N_args, args) 
+
+    integer,intent(in) :: N 
+    double precision , dimension(N), intent(in) :: x 
+    CHARACTER(len=*), intent(in) :: fname 
+    
+    integer, intent(in) :: N_args 
+    double precision  , dimension(N_args), intent(in) :: args
+
+    !Internals 
+    double precision , dimension(p_Nr) :: kappa_p, beta, kappa_0 ! mean plack opacity
+    double precision , dimension(p_Nr) :: F_planet ! planetary flux
+    double precision , dimension(p_Nr) :: Q_s ! surface mass coordinate (see Heller 2015for precisions)
+    double precision , dimension(p_Nr) :: nu, scale_height, c_s ! viscosity and gas scale height 
+    double precision , dimension(p_Nr) :: cap_lambda, omegak, F_vis, F_acc, r
+    double precision , dimension(p_Nr) :: sigma, T_mid, T_s, z_s
+    double precision , dimension(N) :: res_vec
+    integer :: i
+
+    T_mid = x(1:p_Nr) 
+    T_s = x(p_Nr+1:2*p_Nr)
+
+    cap_lambda = args(1 : p_Nr)
+    omegak = args(p_Nr+1 : 2*p_Nr)
+    F_vis = args(2*p_Nr +1: 3*p_Nr)
+    F_acc = args(3*p_Nr+1 : 4*p_Nr)
+    r = args(4*p_Nr+1 : 5*p_Nr)
+
+
+    !sound speed 
+    c_s = sqrt(c_gamma * c_Rg * T_mid /p_mu_gas  ) 
+    ! viscosity 
+    nu = (p_alpha *c_s*c_s )/ (omegak )
+    !disk scale height 
+    scale_height = c_s/omegak
+
+    sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
+
+    kappa_p = p_Chi *   1.6d-5 * T_s**2.1d0
+
+    
+    !Computation of the photosphere height 
+    do i=1,p_Nr
+        z_s(i) = DERFI( min(max(1.0d0 - 2.0d0/3.0d0 * 2.0d0/(sigma(i) &
+        &* kappa_p(i)),-0.9999d0),0.9999d0) ) * sqrt(2.0d0) * scale_height(i)
+    end do
+    
+
+    res_vec = Heller_eq_sys(N,x,N_args,args)
+    call write_file(fname,[r,T_mid,T_s,res_vec,sigma,z_s,omegak,c_s,scale_height],p_Nr,10,&
+    &'r,Tm,Ts,res_Tm,res_Ts,sigma,z_s,omegak,c_s,scale_height,')
+
+end subroutine
 
 end module 

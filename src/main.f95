@@ -97,16 +97,19 @@ call Init_profiles(p_Nr,r,cap_lambda,R_c,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rh
 Write(30,*) "[MAIN] Guesses Initialized "
 if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c_R_jup , 'R_jup'
 
-! Write the initization in a file in table format (for astropy table use)
-open(unit=10, file=Trim(env_datapath)//'/initialisation.dat',status='new')
+call write_file('initialisation.csv',&
+&[r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p],p_Nr,14,&
+&'r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p')
 
-write(10,*) 'r cap_lambda omegak F_vis F_acc T_mid T_s rho_mid rho_add rho_s z_add z_s sigma kappa_p'
+! write all used physical constants 
+call write_file('physical_constants.csv', &
+&[c_au,c_G,c_gamma,c_L_sun,c_M_earth,c_M_jup,c_M_sun,c_R_jup,c_Rg],&
+&1,9,'au,G,gamma,L_sun,M_earth,M_jup,M_sun,R_jup,Rg')
 
-do i = 1,p_Nr 
-    write(10,*) r(i),cap_lambda(i),omegak(i),F_vis(i),F_acc(i),T_mid(i),T_s(i) &
-    &,rho_mid(i),rho_add(i),rho_s(i),z_add(i),z_s(i),sigma(i),kappa_p(i)
-end do 
-close(unit=10) 
+! Write all disk parameters constants
+call write_file('disk_parameters.csv',&
+&[p_a_p,p_alpha,p_Chi,p_Ks,p_L,p_L_p,p_M_dot,p_M_p,p_mu_gas,p_R_disk,p_R_grid,p_R_hill,p_R_p,p_T_neb,p_Xd],&
+&1,15,'a_p,alpha,Chi,Ks,L,L_p,M_dot,M_p,mu_gas,R_disk,R_grid,R_hill,R_p,T_neb,Xd')
 
 Write(30,*) "[MAIN] Guesses Written "
 

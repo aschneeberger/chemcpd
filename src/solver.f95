@@ -613,7 +613,7 @@ module JFNK
                 
                 !write intermediate file 
                 write(filename,'(a,I5.5,a)') "/sol_int",it_file,'.csv'                
-                call write_file( filename, [solve_JFNK,res_vec], p_Nr, 4, 'Tm,Ts,res_Tm,res_Ts,' )
+                call write_heller(filename, N, solve_JFNK, N_args, args) 
             end do 
             
 
