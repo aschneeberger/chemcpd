@@ -133,7 +133,7 @@ Module ENV
         if (N_rows * N_cols .ne. size(values)) then 
 
             WRITE(*,*) "[ENV] ERROR In write_file subroutine, values array size not equal to N_rows * N_cols"
-            WRITE(*,*) "File :" filename
+            WRITE(*,*) "File :", fname
             WRITE(*,*) "Header :", colnames
             WRITE(*,*) "array length :" , size(values)
             stop
