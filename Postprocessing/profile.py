@@ -21,10 +21,11 @@ import pandas as pd              # CSV manipulation
 import sys                       # Sys calls 
 import os                        # File management
 import astropy.constants as cte  # Astrophysics constants  
+import scipy.special as spe 
 
 PATH = sys.argv[1]   # get file path 
 FILE = sys.argv[2]
-THRESHOLD = 1     # Residue threshold to consider that a point converged  
+THRESHOLD = 1e-2     # Residue threshold to consider that a point converged  
 
 
 data_table = pd.read_csv(PATH+'/'+FILE,sep=',')                     # Open the data csv file 
@@ -33,39 +34,64 @@ disk_table = pd.read_csv(PATH+'/disk_parameters.csv',sep=',')       # Open csv w
 cte_table  = pd.read_csv(PATH+'/physical_constants.csv',sep=',')     # Open csv file with all used physics constants
 
 
-# Create a mask where both surface and midplane temperature  residuals are under the threshold 
-mask = (np.abs(data_table['res_Tm'].values) < THRESHOLD) * (np.abs(data_table['res_Ts'].values) < THRESHOLD)
+
+# Create a mask where both surface and midplane temperature  residuals are superior to the threshold 
+mask = (np.abs(data_table['res_Tm'].values) > THRESHOLD) * (np.abs(data_table['res_Ts'].values) > THRESHOLD)
 
 # Get the radial coordinates 
 r = init_table["r"].values
 
+rmin =r.min() 
+rmax =r.max() 
+
+
 # fileter all quantities 
-Tm = data_table['Tm'][mask].values
-Ts = data_table['Ts'][mask].values
-sigma = data_table["sigma"][mask].values
-scale_height = data_table["scale_height"][mask].values
-r = r[mask]
+Tm = data_table['Tm'].values
+Ts = data_table['Ts'].values
+sigma = data_table["sigma"].values
+scale_height = data_table["scale_height"].values
+
 
 # Create the grid in z 
-z = np.logspace(1,np.log10(cte_table["R_jup"]),1000)
+zmin=0
+zmax = cte_table["R_jup"].values[0]
+
+z = np.linspace(zmin,zmax,300)
+
 
 # Create the 2D mesh 
 R,Z = np.meshgrid(r,z)
 
 rho = np.zeros((len(z),len(r)))
-
+q = np.zeros((len(z),len(r)))
+T2D = np.zeros((len(z),len(r)))
+kappa = disk_table['Chi'].values *   1.6e-5 * Ts**2.1
 
 # Compute all 1D quantities 
 
 rho0 = np.sqrt(2/np.pi) * sigma / (2*scale_height) 
-
 for j in range(len(z)) :
     for i in range(len(r)):
-        rho[j,i] = rho0[i] * np.exp(-z[j]**2 / (2*scale_height[i]))
+        rho[j,i] = rho0[i] * np.exp(-z[j]**2 / (2*scale_height[i]**2)) 
+        q[j,i] = 2*rho0[i]/sigma[i] * ( np.sqrt(np.pi/2) * scale_height[i] * spe.erf(z[j]/(np.sqrt(2) * scale_height[i]) ) )
 
+        T2D[j,i] = (1 + 3/64 * 1.9 * init_table['F_vis'].values[i]/(cte.sigma_sb.value * Ts[i]**4) * kappa[i] * sigma[i] * (1-q[j,i]**2) ) ** (1/1.9) * Ts[i]
 
+rho[:,mask] = 0
+T2D[:,mask] = 0
 
-plt.contourf(R,Z,np.log10(rho),cmap="hot")
-plt.clim(-10,-2)
+plt.figure()
+plt.title("gas density")
+plt.imshow(rho[-1::-1,:],cmap="hot" , extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
+plt.xlabel('r (Normalized)')
+plt.ylabel('z in $R_{jup}$')
+#plt.clim(-10,-4)
 plt.colorbar()
+
+plt.figure()
+plt.title("disk temperature")
+plt.imshow(T2D[-1::-1,:],cmap='hot',extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
+plt.colorbar()
+plt.xlabel('r (Normalized)')
+plt.ylabel('z in $R_{jup}$')
 plt.show()

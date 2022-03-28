@@ -99,17 +99,17 @@ if (p_verbose) write(30,*) '[GUESSES] Centrigucal Radius Rc computed as:', R_c/c
 
 call write_file('initialisation.csv',&
 &[r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p],p_Nr,14,&
-&'r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p')
+&'r,cap_lambda,omegak,F_vis,F_acc,T_mid,T_s,rho_mid,rho_add,rho_s,z_add,z_s,sigma,kappa_p,')
 
 ! write all used physical constants 
 call write_file('physical_constants.csv', &
 &[c_au,c_G,c_gamma,c_L_sun,c_M_earth,c_M_jup,c_M_sun,c_R_jup,c_Rg],&
-&1,9,'au,G,gamma,L_sun,M_earth,M_jup,M_sun,R_jup,Rg')
+&1,9,'au,G,gamma,L_sun,M_earth,M_jup,M_sun,R_jup,Rg,')
 
 ! Write all disk parameters constants
 call write_file('disk_parameters.csv',&
 &[p_a_p,p_alpha,p_Chi,p_Ks,p_L,p_L_p,p_M_dot,p_M_p,p_mu_gas,p_R_disk,p_R_grid,p_R_hill,p_R_p,p_T_neb,p_Xd],&
-&1,15,'a_p,alpha,Chi,Ks,L,L_p,M_dot,M_p,mu_gas,R_disk,R_grid,R_hill,R_p,T_neb,Xd')
+&1,15,'a_p,alpha,Chi,Ks,L,L_p,M_dot,M_p,mu_gas,R_disk,R_grid,R_hill,R_p,T_neb,Xd,')
 
 Write(30,*) "[MAIN] Guesses Written "
 
@@ -130,7 +130,7 @@ Write(30,*) "[MAIN] Begining of solving "
 x = 1d4![T_mid,T_s]
 args = [cap_lambda,omegak,F_vis,F_acc,r]
 
-sol = solve_JFNK(p_Nr*2,Heller_eq_sys,boundary_heller_sys,x,5*p_Nr,args,10000,1d-5,1d-5)
+sol = solve_JFNK(p_Nr*2,Heller_eq_sys,boundary_heller_sys,x,5*p_Nr,args,3000,1d-5,1d-5)
 
 close(unit=10)
 
