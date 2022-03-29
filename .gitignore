@@ -12,7 +12,7 @@
 *.npy
 *.dat
 *.log
-/Data
 *.dSyM
 *.DS_Store
 *.csv
+*.pdf

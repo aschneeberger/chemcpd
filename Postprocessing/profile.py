@@ -56,7 +56,7 @@ scale_height = data_table["scale_height"].values
 zmin=0
 zmax = cte_table["R_jup"].values[0]
 
-z = np.linspace(zmin,zmax,300)
+z = np.linspace(zmin,zmax,1000)
 
 
 # Create the 2D mesh 
@@ -80,18 +80,24 @@ for j in range(len(z)) :
 rho[:,mask] = 0
 T2D[:,mask] = 0
 
+xpos = np.linspace(0,1,5)
+xval = np.around(np.geomspace(rmin/cte_table['R_jup'][0],rmax/cte_table['R_jup'][0],5),2)
+
 plt.figure()
 plt.title("gas density")
 plt.imshow(rho[-1::-1,:],cmap="hot" , extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
-plt.xlabel('r (Normalized)')
+plt.xlabel('r in $R_{jup}$')
 plt.ylabel('z in $R_{jup}$')
+plt.xticks(xpos,xval)
 #plt.clim(-10,-4)
 plt.colorbar()
+plt.savefig(PATH + '/Density.pdf',dpi=500)
 
 plt.figure()
 plt.title("disk temperature")
 plt.imshow(T2D[-1::-1,:],cmap='hot',extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
 plt.colorbar()
-plt.xlabel('r (Normalized)')
+plt.xlabel('r in $R_{jup}$')
 plt.ylabel('z in $R_{jup}$')
-plt.show()
+plt.xticks(xpos,xval)
+plt.savefig(PATH + '/Temperature.pdf',dpi=500)
