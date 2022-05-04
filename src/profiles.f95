@@ -849,7 +849,7 @@ subroutine Guesses_Anderson(N,r,cap_lambda,omegak,T_mid,T_s,rho_mid,rho_add,rho_
 
     ! From equation 4 of anderson et al 2021 
     T_mid = ((3.0d0*omegak**2.0d0 * p_M_dot * cap_lambda) / (10.0d0 * c_PI * c_sigma_sb)  + &
-    & +  p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 
+    & p_T_neb**4.0d0 + p_Ks * p_L_p/(4.0d0*c_PI * c_sigma_sb* r*r))**0.25 
     T_s = T_mid / 5.0d0
 
     c_s = sqrt(c_gamma * c_Rg * T_mid / p_mu_gas)
