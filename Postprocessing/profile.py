@@ -22,10 +22,11 @@ import sys                       # Sys calls
 import os                        # File management
 import astropy.constants as cte  # Astrophysics constants  
 import scipy.special as spe 
+from scipy import interpolate
 
 PATH = sys.argv[1]   # get file path 
 FILE = sys.argv[2]
-THRESHOLD = 1e-2     # Residue threshold to consider that a point converged  
+THRESHOLD = 1e-4     # Residue threshold to consider that a point converged  
 
 
 data_table = pd.read_csv(PATH+'/'+FILE,sep=',')                     # Open the data csv file 
@@ -36,21 +37,34 @@ cte_table  = pd.read_csv(PATH+'/physical_constants.csv',sep=',')     # Open csv 
 
 
 # Create a mask where both surface and midplane temperature  residuals are superior to the threshold 
-mask = (np.abs(data_table['res_Tm'].values) > THRESHOLD) * (np.abs(data_table['res_Ts'].values) > THRESHOLD)
+mask = (np.abs(data_table['res_Tm'].values) < THRESHOLD) * (np.abs(data_table['res_Ts'].values) < THRESHOLD)
 
 # Get the radial coordinates 
 r = init_table["r"].values
+r_filtered = r[mask]
 
 rmin =r.min() 
 rmax =r.max() 
 
 
 # fileter all quantities 
-Tm = data_table['Tm'].values
-Ts = data_table['Ts'].values
-sigma = data_table["sigma"].values
-scale_height = data_table["scale_height"].values
+Tm = data_table['Tm'].values[mask]
+Ts = data_table['Ts'].values[mask]
+sigma = data_table["sigma"][mask]
+scale_height = data_table["scale_height"][mask]
 
+# Interpolate points that did not converge
+# Construct the functions 
+f_Tm = interpolate.interp1d(r_filtered,Tm)
+f_Ts = interpolate.interp1d(r_filtered,Ts)
+f_sigma = interpolate.interp1d(r_filtered,sigma)
+f_scale_height = interpolate.interp1d(r_filtered,scale_height)
+
+# Reconstruct all quantities 
+Tm = f_Tm(r)
+Ts = f_Ts(r)
+sigma = f_sigma(r)
+scale_height = f_scale_height(r)
 
 # Create the grid in z 
 zmin=0
@@ -77,15 +91,12 @@ for j in range(len(z)) :
 
         T2D[j,i] = (1 + 3/64 * 1.9 * init_table['F_vis'].values[i]/(cte.sigma_sb.value * Ts[i]**4) * kappa[i] * sigma[i] * (1-q[j,i]**2) ) ** (1/1.9) * Ts[i]
 
-rho[:,mask] = 0
-T2D[:,mask] = 0
-
 xpos = np.linspace(0,1,5)
 xval = np.around(np.geomspace(rmin/cte_table['R_jup'][0],rmax/cte_table['R_jup'][0],5),2)
 
 plt.figure()
 plt.title("gas density")
-plt.imshow(rho[-1::-1,:],cmap="hot" , extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
+plt.imshow(rho[-1::-1,:],cmap="hot" , extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]), interpolation=None )
 plt.xlabel('r in $R_{jup}$')
 plt.ylabel('z in $R_{jup}$')
 plt.xticks(xpos,xval)
@@ -95,7 +106,7 @@ plt.savefig(PATH + '/Density.pdf',dpi=500)
 
 plt.figure()
 plt.title("disk temperature")
-plt.imshow(T2D[-1::-1,:],cmap='hot',extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]))
+plt.imshow(T2D[-1::-1,:],cmap='hot',extent=(0,1,zmin/cte_table["R_jup"].values[0],zmax/cte_table["R_jup"].values[0]), interpolation=None )
 plt.colorbar()
 plt.xlabel('r in $R_{jup}$')
 plt.ylabel('z in $R_{jup}$')
