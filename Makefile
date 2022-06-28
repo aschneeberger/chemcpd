@@ -1,45 +1,51 @@
 .PHONY : clean all chemcpd.exe
+
+
+# Python tool to generate dependencies
+MAKEDEPEND = ~/.local/bin/fortdepend
+# File where all dependencies are stored 
+DEP_FILE = chemcpd.dep
+
+OBJECTS  = src/*.f90 #src/ACE/*.f90
+
 DBFLAG = -fbounds-check -fbacktrace -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
 OFLAG =  -O3 -ffast-math -flto -march=native -funroll-loops -fallow-store-data-races #-fopenmp
 CFLAG =  $(DBFLAG) $(OFLAG)
 DFLAG = -c $(CFLAG)
 
-DIR = ./src
 
-all: chemcpd.exe
+# MAke sure everything depends on the .dep file 
+all: chemcpd.exe $(DEP_FILE)
 
-chemcpd.exe : $(DIR)/main.f95  quadpack.o minpack.o constant_table.o env.o particular_functions.o profiles.o solver.o 
-	gfortran $(CFLAG) $(DIR)/main.f95 quadpack.o minpack.o constant_table.o profiles.o particular_functions.o env.o solver.o -o chemcpd.exe  
-	make clean
-	make reset
+# Make dependencies
+.PHONY. : depend
 
+depend : $(DEP_FILE)
 
-minpack.o : $(DIR)/minpack.f95 
-	gfortran $(DFLAG) $(DIR)/minpack.f95
+# The .dep file depends on the source files, so it automatically gets updated
+# when you change your source
+$(DEP_FILE) : $(OBJECTS)
+	@echo "Making dependencies"
+	$(MAKEDEPEND) -w -o $(DEP_FILE) -f $(OBJECTS)
 
-quadpack.o : $(DIR)/quadpack.f95 
-	gfortran $(DFLAG) $(DIR)/quadpack.f95
+# Build all dependencies 
+.f90.o : 
+	gfortran -c $(CFLAG) $< 
 
-profiles.o : $(DIR)/profiles.f95 
-	gfortran $(DFLAG) $(DIR)/profiles.f95
+# Build the executable 
+chemcpd.exe :  $(OBJECTS)
+	gfortran $(CFLAG) $^ -o  $@
+	make clean 
 
-constant_table.o : $(DIR)/constant_table.f95 
-	gfortran $(DFLAG) $(DIR)/constant_table.f95
-
-particular_functions.o : $(DIR)/particular_functions.f95
-	gfortran $(DFLAG) $(DIR)/particular_functions.f95
-
-env.o : $(DIR)/env.f95
-	gfortran $(DFLAG) $(DIR)/env.f95
-
-solver.o : $(DIR)/solver.f95
-	gfortran $(DFLAG) $(DIR)/solver.f95
-
+# remove all mod files 
 clean : 
-	rm *.o *.mod 
+	rm *.mod
 
 mrproper : clean 
 	rm chemcpd.exe
 
 reset : 
 	rm -rf ./Data/*
+
+
+include $(DEP_FILE)

@@ -1,0 +1,41 @@
+# This file is generated automatically. DO NOT EDIT!
+
+CHEMCPD :  \
+	constant_table.o \
+	env.o \
+	main.o \
+	particular_functions.o \
+	profiles.o \
+	quadpack.o \
+	solver.o
+
+constant_table.o : 
+
+env.o :  \
+	constant_table.o
+
+main.o :  \
+	constant_table.o \
+	env.o \
+	particular_functions.o \
+	profiles.o \
+	profiles.o \
+	quadpack.o \
+	solver.o
+
+minpack.o : 
+
+particular_functions.o : 
+
+profiles.o :  \
+	constant_table.o \
+	constant_table.o \
+	env.o \
+	particular_functions.o
+
+quadpack.o : 
+
+solver.o :  \
+	constant_table.o \
+	env.o \
+	profiles.o

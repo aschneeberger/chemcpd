@@ -5670,4 +5670,4 @@ subroutine rwupdt ( n, r, ldr, w, b, alpha, c, s )
   return
 end
 
-end module
+end module MINPACK

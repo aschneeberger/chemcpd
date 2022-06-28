@@ -101,7 +101,7 @@ subroutine opacity_table(N,Temp_in,beta,kappa_0,kappa_p)
      
 end subroutine
 
-END MODULE 
+END MODULE OPACITY
 
 !--------------------------------------------------------------------------------------------------------
 
@@ -112,7 +112,6 @@ module DSKPHY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 USE PHYCTE
 USE MODCTE
-USE QUADPACK
 USE OPACITY
 USE PARTFUN
 
@@ -886,7 +885,7 @@ end subroutine
 
 
 
-end module
+end module DSKPHY
 
 !--------------------------------------------------------------------------------------------------------
 
@@ -1255,6 +1254,6 @@ subroutine write_heller(fname, N, x, N_args, args)
     call write_file(fname,[r,T_mid,T_s,res_vec,sigma,z_s,omegak,c_s,scale_height],p_Nr,10,&
     &'r,Tm,Ts,res_Tm,res_Ts,sigma,z_s,omegak,c_s,scale_height,')
 
-end subroutine
+end subroutine 
 
-end module 
+end module RESIDUES

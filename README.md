@@ -10,4 +10,4 @@ Each step can be precomputed independantly from the others
 
 The data explorer system is present in the folder `posprocessing`. It is composed of a parser and a plotter to explore the solution and intermediary files. 
 
-The physical explenation is in the wiki of the repo. 
+The physical explanation is in the wiki of the repo. 

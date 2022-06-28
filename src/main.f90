@@ -155,4 +155,4 @@ close(unit=10)
 Write(30,*) "[MAIN] Solution Written "
 
 close(unit=30)
-END PROGRAM
+END PROGRAM CHEMCPD

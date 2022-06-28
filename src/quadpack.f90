@@ -5,7 +5,7 @@
 ! QUADPACK: A Subroutine Package for Automatic Integration,
 ! Springer, 1983, ISBN: 3540125531.
 
-module quadpack
+module QUADPACK
 implicit none
 
 contains
@@ -8702,4 +8702,4 @@ subroutine timestamp ( )
   return
 end subroutine
 
-end module quadpack
+end module QUADPACK
