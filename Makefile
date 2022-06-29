@@ -8,7 +8,7 @@ DEP_FILE = chemcpd.dep
 
 OBJECTS  = src/*.f90 #src/ACE/*.f90
 
-DBFLAG = -fbounds-check -fbacktrace -Wall -pedantic -g3 -ffpe-trap=invalid,zero,overflow 
+DBFLAG = -fbounds-check -fbacktrace  -g3 -ffpe-trap=invalid,zero,overflow  #-Wall -pedantic
 OFLAG =  -O3 -ffast-math -flto -march=native -funroll-loops -fallow-store-data-races #-fopenmp
 CFLAG =  $(DBFLAG) $(OFLAG)
 DFLAG = -c $(CFLAG)
@@ -30,7 +30,7 @@ $(DEP_FILE) : $(OBJECTS)
 
 # Build all dependencies 
 .f90.o : 
-	gfortran -c $(CFLAG) $< 
+	gfortran -c $(CFLAG) $(OBJECTS)
 
 # Build the executable 
 chemcpd.exe :  $(OBJECTS)
