@@ -17,3 +17,5 @@
 *.csv
 *.pdf
 *.dSYM
+*.txt
+*.nfs*

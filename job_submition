@@ -1,33 +1,21 @@
 #!/bin/sh
-
-#SBATCH --job-name=chempcpd
-#SBATCH --time=5-00:00:00
-#SBATCH --mail-type=ALL
+#SBATCH -J chemcpd                            # run's name
+#SBATCH -N 1                                    # request 1 node 
+#SBATCH -c 1                                    # request 1 cpu per task
+#SBATCH --mem=1GB                               # request 10GB
+#SBATCH -t 5-00:00:00                           # request 12 hours walltime
+#SBATCH -o Out.txt                              # output file name
+#SBATCH -e Err.txt                              # error file name
+#SBATCH --mail-type=BEGIN,END,FAIL              # send me an e-mail at beginning and end of the job
 #SBATCH --mail-user=antoine.schneeberger@lam.fr
-#SBATCH --partition=short
-#SBATCH --output=resultslumr.log
+#SBATCH -p batch                                # Using the Batch partition to have 6 days of  walltime 
 
 
- ulimit -s unlimited 
- ulimit -n 100240
- ulimit -u 95679
- ulimit -f unlimited
- ulimit -v unlimited
- ulimit -x unlimited
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/apps/intel/impi/2019.3.199/intel64/lib/:/lib64/:/libraries/libcalcul/netcdf/lib/
- 
-export NETCDF=/libraries/libcalcul/netcdf/
-source /apps/intel/bin/ifortvars.sh intel64
-source /apps/intel/bin/iccvars.sh intel64
+scl enable gcc-toolset-11 bash 
+make 
 
-path=/home/aschneeberger
-cd $path 
+path=$HOME
+cd $path
 
-source virtualenvwrapper.sh
-workon chemcpd36
-
-
-export OMP_NUM_THREAD=4
-
-srun --ntasks 1 /home/aschneeberger/chemcpd/chemcpd.exe
+$HOME/chemcpd/chemcpd.exe
