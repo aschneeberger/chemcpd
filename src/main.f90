@@ -18,7 +18,7 @@ USE Md_parametres
 IMPLICIT NONE 
 
 !Loop variables 
-integer :: i
+integer :: i,j
 
 !Physical parameters 
 double precision , dimension(p_Nr) :: r
@@ -155,6 +155,14 @@ Pressure = compute_pressure(2*p_Nr,sol,5*p_Nr,args)
 
 call ACE(pressure,T_mid,H_abund_dex,C_abund_Sol_dex,O_abund_Sol_dex,H_abund_dex,nspec,specfile,spec,fm,code)
 
+open(135,file=Trim(env_datapath)//'/ACE.dat')
+do i=1, p_Nr
+    do j=1, nspec
+        write(135,'(g0)',advance="no") fm(j,i)
+    end do 
+    write(135,*)  
+end do
+
 !Write the solution in a file
 
 open(unit=10, file=Trim(env_datapath)//'/Solution.dat',status='new')
@@ -166,6 +174,5 @@ do i = 1,p_Nr
 end do 
 close(unit=10) 
 Write(30,*) "[MAIN] Solution Written "
-
 close(unit=30)
 END PROGRAM CHEMCPD

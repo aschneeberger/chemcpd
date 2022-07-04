@@ -606,10 +606,10 @@ module JFNK
                 it_file = it_file + 1 
                 
                 !IO 
-                open(unit=130,file=trim(env_datapath)//'/res.dat',status='new')
+                open(unit=130,file=trim(env_datapath)//'/res.dat',status='old')
                 write(130,*) res
                 close(unit=130)
-                
+
                 !write(*,*) 'res', func(N,solve_JFNK,N_args,args)
                 write(*,*) 'res norm', res
                 write(*,*) '-------------------------------------'

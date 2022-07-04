@@ -2,7 +2,7 @@
 #SBATCH -J chemcpd                            # run's name
 #SBATCH -N 1                                    # request 1 node 
 #SBATCH -c 1                                    # request 1 cpu per task
-#SBATCH --mem=1GB                               # request 10GB
+#SBATCH --mem=5GB                               # request 10GB
 #SBATCH -t 5-00:00:00                           # request 12 hours walltime
 #SBATCH -o Out.txt                              # output file name
 #SBATCH -e Err.txt                              # error file name
