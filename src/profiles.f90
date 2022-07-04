@@ -1256,4 +1256,41 @@ subroutine write_heller(fname, N, x, N_args, args)
 
 end subroutine 
 
+
+function compute_pressure(N,x,N_args,args)
+
+    integer :: N, N_args
+    double precision , dimension(N) :: x 
+    double precision , dimension(N_args) :: args
+
+    double precision , dimension(p_Nr) :: nu, scale_height, c_s ! viscosity and gas scale height 
+    double precision , dimension(p_Nr) :: cap_lambda, omegak, F_vis, F_acc, r
+    double precision , dimension(p_Nr) :: sigma, T_mid, T_s, z_s
+
+    double precision , dimension(p_Nr) :: compute_pressure
+
+    cap_lambda = args(1 : p_Nr)
+    omegak = args(p_Nr+1 : 2*p_Nr)
+    F_vis = args(2*p_Nr +1: 3*p_Nr)
+    F_acc = args(3*p_Nr+1 : 4*p_Nr)
+    r = args(4*p_Nr+1 : 5*p_Nr)
+
+    T_mid = x(1:p_Nr) 
+    T_s = x(p_Nr+1:2*p_Nr)
+
+    !sound speed 
+    c_s = sqrt(c_gamma * c_Rg * T_mid /p_mu_gas  ) 
+    ! viscosity 
+    nu = (p_alpha *c_s*c_s )/ (omegak )
+    !disk scale height 
+    scale_height = c_s/omegak
+
+    sigma   = (p_M_dot * cap_lambda) / (3.0d0 * c_pi *nu * p_L) 
+
+    compute_pressure = sigma * c_Rg * T_mid / (2*p_mu_gas * scale_height * sqrt(2d0*c_pi))
+
+
+end function  
+
+
 end module RESIDUES

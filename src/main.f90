@@ -12,6 +12,8 @@ USE PARTFUN
 USE ENV
 USE JFNK
 USE Md_ACE
+USE Md_Constantes
+USE Md_parametres
 
 IMPLICIT NONE 
 
@@ -34,10 +36,18 @@ double precision , dimension(p_Nr) :: z_add
 double precision , dimension(p_Nr) :: z_s
 double precision , dimension(p_Nr) :: sigma
 double precision , dimension(p_Nr) :: kappa_p
+double precision , dimension(p_Nr) :: Pressure
 
 !Hybr1 subroutine parameters: 
 DOUBLE PRECISION , DIMENSION(2*p_Nr) :: X, sol, res ! array containin all variables (8*p_Nr) 
 double precision , dimension(5*p_Nr) :: args ! constant arguments in function to optimize
+
+! parameters for ACE thermochemical module
+double precision , dimension(nspec,p_Nr) :: fm
+Character(len=50) , dimension(nspec) :: spec
+Character(len=50) :: specfile   = Trim(path_data)//'composes.dat' 
+
+integer :: code 
 
 
 !!!!!!!!!!!!!!!!
@@ -141,7 +151,9 @@ T_s = sol(p_Nr+1 : 2*p_Nr)
 
 res = Heller_eq_sys(2*p_Nr,sol,5*p_Nr,args)
 
+Pressure = compute_pressure(2*p_Nr,sol,5*p_Nr,args)
 
+call ACE(pressure,T_mid,H_abund_dex,C_abund_Sol_dex,O_abund_Sol_dex,H_abund_dex,nspec,specfile,spec,fm,code)
 
 !Write the solution in a file
 
