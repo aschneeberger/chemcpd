@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH -J chemcpd                            # run's name
+#SBATCH -J chemcpd_newdata                      # run's name
 #SBATCH -N 1                                    # request 1 node 
 #SBATCH -c 1                                    # request 1 cpu per task
 #SBATCH --mem=5GB                               # request 10GB

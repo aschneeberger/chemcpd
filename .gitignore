@@ -19,3 +19,4 @@
 *.dSYM
 *.txt
 *.nfs*
+src/chemcpd.code-workspace
