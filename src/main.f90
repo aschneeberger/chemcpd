@@ -47,6 +47,8 @@ double precision , dimension(nspec,p_Nr) :: fm
 Character(len=50) , dimension(nspec) :: spec
 Character(len=50) :: specfile   = Trim(path_data)//'composes.dat' 
 
+Character(len=1000) :: header_specnames
+double precision , dimension(nspec*p_Nr) :: csv_fm
 integer :: code 
 
 
@@ -149,11 +151,17 @@ close(unit=10)
 T_mid = sol(1 : p_Nr)
 T_s = sol(p_Nr+1 : 2*p_Nr)
 
+! compute the last residual 
 res = Heller_eq_sys(2*p_Nr,sol,5*p_Nr,args)
 
+! Get the midplane presssure from the temperature 
 Pressure = compute_pressure(2*p_Nr,sol,5*p_Nr,args)
 
+! Compute the thermochemical equilibrium 
 call ACE(pressure,T_mid,H_abund_dex,C_abund_Sol_dex,O_abund_Sol_dex,H_abund_dex,nspec,specfile,spec,fm,code)
+
+
+! write the abundances in matrix
 
 open(135,file=Trim(env_datapath)//'/ACE.dat')
 do i=1, p_Nr
@@ -162,6 +170,16 @@ do i=1, p_Nr
     end do 
     write(135,*)  
 end do
+close(135)
+
+! write abudnances in csv 
+csv_fm = reshape( fm, [p_Nr*nspec] )
+
+do i=1,nspec
+    write(header_specnames,*) spec(i),','
+end do 
+
+call write_file("ACE.csv",csv_fm,p_Nr,nspec,header_specnames)
 
 !Write the solution in a file
 
