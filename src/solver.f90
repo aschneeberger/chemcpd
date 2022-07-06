@@ -606,7 +606,7 @@ module JFNK
                 it_file = it_file + 1 
                 
                 !IO 
-                open(unit=130,file=trim(env_datapath)//'/res.dat',status='old')
+                open(unit=130,file=trim(env_datapath)//'/res.dat',status='old',position='append')
                 write(130,*) res
                 close(unit=130)
 
